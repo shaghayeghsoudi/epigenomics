@@ -1,4 +1,8 @@
+## this script process Bismark coverage output files
 
+# Attributions
+# original writer: Shaghayegh Soudi
+# contributor: NA
 
 ## load required packages 
 library(ggplot2)
