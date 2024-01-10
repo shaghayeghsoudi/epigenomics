@@ -1,5 +1,8 @@
 ## This script makes methylation matrix from Bismark coverage files.Rows are cytosine positions and columns are samples.
 
+## Attributions:
+## Original writter: Shaghayegh Soudi
+## Conntributor: NA
 
 ## load required libraries
 library(dplyr)
