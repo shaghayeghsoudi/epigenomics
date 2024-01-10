@@ -34,7 +34,7 @@ coverage_good<-aa_montecarlo %>%
     mutate(sample_id=sub('.*/\\s*','', gsub("_R1_val_1_bismark_bt2_pe.bismark.cov","",path)),)%>% 
     select(V1,V2,V3,V4,V5,V6,sample_id)
 
-names(coverage_good)<-c("chr", "start", "end", "methylation_percent", "count_methylated", "count_unmethylated","path","sample_id")
+names(coverage_good)<-c("chr", "start", "end", "methylation_percent", "count_methylated", "count_unmethylated","sample_id")
 
 
 #ggplot(ww, aes(methylation_percent)) +
@@ -57,6 +57,14 @@ pdf("Histogram_of_CpG_percentage_methylation_pilot1.pdf", width = 10, height = 1
 print(plot_hist2)
 dev.off()
  
+
+#########################################
+### make a count matrix ###
+
+
+coverage_good_table <-coverage_good %>% 
+     mutate(pos_id=paste())
+
 
 #########################################
 ### plot methylation ratio per sample ###
