@@ -1,4 +1,4 @@
-## this script process Bismark coverage output files
+## this Rscript processes Bismark coverage output files
 
 # Attributions
 # original writer: Shaghayegh Soudi
@@ -30,9 +30,11 @@ aa_montecarlo<- do.call("rbind", attackStats_COV)
 
 names(aa_montecarlo)[7]<-"path"
 
+
 coverage_good<-aa_montecarlo %>% 
     mutate(sample_id=sub('.*/\\s*','', gsub("_R1_val_1_bismark_bt2_pe.bismark.cov","",path)),)%>% 
-    select(V1,V2,V3,V4,V5,V6,sample_id)
+    select(V1,V2,V3,V4,V5,V6,sample_id) 
+   
 
 names(coverage_good)<-c("chr", "start", "end", "methylation_percent", "count_methylated", "count_unmethylated","sample_id")
 
@@ -58,12 +60,6 @@ print(plot_hist2)
 dev.off()
  
 
-#########################################
-### make a count matrix ###
-
-
-coverage_good_table <-coverage_good %>% 
-     mutate(pos_id=paste())
 
 
 #########################################
@@ -147,3 +143,56 @@ dev.off()
 #both<-rbind(d1_data,d5_data)
 
 
+
+#########################################
+### make a count matrix ###
+### exclude FFPES and low coverage samples
+target<-c("SRC125-N8","SRC160-T1","SRC163-T1","SRC127-N7")   ### low coverage samples to be dropped
+
+coverage_good_table <-coverage_good %>% 
+     mutate(pos_id=paste(chr,start, sep ="_")) %>% 
+     filter(!(sample_id%in%target))
+
+
+## keep only pre-and postRT samples
+coverage_good_tableRT<-coverage_good_table[grep("T", coverage_good_table$sample_id), ]  ## 14 samples only
+
+ChrNames <- c(1:19,"X","Y") 
+coverage_good_tableRT<-coverage_good_tableRT[coverage_good_tableRT$chr%in%ChrNames, ]
+
+
+### keep positions shared between all tumour samples
+count_14<-table(coverage_good_tableRT$pos_id) 
+position14<-subset(names(count_14), count_14 == 14)
+
+coverage_good_14<-coverage_good_tableRT[coverage_good_tableRT$pos_id%in%position14,]
+
+
+
+for (i in 1:length(ChrNames)){
+
+  coverage_good_14_chrom<-coverage_good_14[coverage_good_14$chr==ChrNames[i],]
+  positions<-unique(coverage_good_14_chrom$pos_id)
+
+out_res_chrom<-NULL
+  for (kk in 1:length(positions)){
+
+    coverage_good_14_final<-data.frame(t(coverage_good_14_chrom[coverage_good_14_chrom$pos_id==positions[kk],c("count_methylated","sample_id")]))
+    colnames(coverage_good_14_final)<-coverage_good_14_final[2,]
+    focal_pos_good<-coverage_good_14_final[1,]
+    rownames(focal_pos_good)<-positions[kk]
+    out_res_chrom<-rbind(focal_pos_good,out_res_chrom)
+
+  }
+setwd("~/Dropbox/cancer_reserach/sarcoma/sarcoma_analysis/methylation/RRBS/downstream/count_matrices")
+write.table(out_res_chrom, file = paste("methylated_cytosine_beforeRT_afterRT_chrom",ChrNames[i],".table", sep = ""),quote = FALSE, sep = "\t")
+}
+
+
+
+
+
+
+
+
+######
