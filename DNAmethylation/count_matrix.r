@@ -47,14 +47,55 @@ cats<-c("beforeRT-afterRT","Normal-beforeRT")
 
 for (ll in 1:length(cats)){
 
-  cat_foc<-cats[ll]
-  cat1<-as.character(sapply(strsplit(cat_foc, "-"), "[", c(1,2,3)))
-  meta_cat1<-meta_good[meta_good$RT_status%in%cat1,"sample_id"]  ### sample we need for each category
+    cat_foc<-cats[ll]
+    cat1<-as.character(sapply(strsplit(cat_foc, "-"), "[", c(1,2,3)))
+    meta_cat1<-meta_good[meta_good$RT_status%in%cat1,"sample_id"]  ### sample we need for each category
+    coverage_cat1<-coverage_good_table[coverage_good_table$sample_id%in% meta_cat1, ]
+        
+    ## subset chromosomes
+    ChrNames <- c(1:22,"X","Y")
 
-  coverage_cat1<-coverage_good_table[coverage_good_table$sample_id%in% meta_cat1, ]
-  ChrNames <- c(1:22,"X","Y")
+    ### keep positions shared between all targeted samples
+    count_14<-table(coverage_cat1$pos_id) 
+    #position14<-subset(names(count_14), count_14 == 17)
+    position14<-subset(names(count_14), count_14 == length(unique(coverage_cat1$sample_id)))
 
-}
+    ## subset positions shared between all targeted samples
+    coverage_good_14<-coverage_cat1[coverage_cat1$pos_id%in%position14,]
+
+
+    out_res<-NULL
+    for (i in 1:length(ChrNames)){
+
+        coverage_good_14_chrom<-coverage_good_14[coverage_good_14$chr==ChrNames[i],]
+        positions<-unique(coverage_good_14_chrom$pos_id)
+
+        out_res_chrom<-NULL
+            for (kk in 1:length(positions)){
+
+                 coverage_good_14_final<-data.frame(t(coverage_good_14_chrom[coverage_good_14_chrom$pos_id==positions[kk],c("coverage","sample_id")]))
+                 colnames(coverage_good_14_final)<-coverage_good_14_final[2,]
+                 focal_pos_good<-coverage_good_14_final[1,]
+                 rownames(focal_pos_good)<-positions[kk]
+                 out_res_chrom<-rbind(focal_pos_good,out_res_chrom)
+
+
+                #coverage<-data.frame(t(coverage_good_14_chrom[coverage_good_14_chrom$pos_id==positions[kk],c("count_methylated","sample_id")]))
+                #colnames(coverage)<-coverage[2,]
+                #focal_pos_good_cov<-coverage[1,]
+                #rownames(focal_pos_good_cov)<-positions[kk]
+                #out_res_chrom<-rbind(focal_pos_good,out_res_chrom)
+
+     }
+
+         write.table(out_res_chrom, file = paste("methylation_coverage_normal_beforeRT_chrom",ChrNames[i],".table", sep = ""),quote = FALSE, sep = "\t")
+    }
+
+
+
+} ### category loop (ll loop)
+
+
 
 
 #######################
