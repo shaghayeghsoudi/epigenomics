@@ -1,7 +1,8 @@
 ############################################
 ##### process RRBS outputs with EdgeR ######
 ############################################
-rm(list = ls())
+
+#rm(list = ls())
 
 library(ggplot2)
 library(dplyr)
@@ -19,15 +20,10 @@ targets <- read.delim(paste("targets.csv", sep = ""), stringsAsFactors=FALSE, se
 files <- paste("coverage_files/",targets$File, sep = "")
 yall <- readBismark2DGE(files, sample.names=targets$Sample)
 
-dim(yall)
-
-#We remove the mitochondrial genes as they are usually of less interest, and also unassembled contigs
+#dim(yall)
 table(yall$genes$Chr)
-
 #yall <- yall[yall$genes$Chr!="MT", ]
-
-
-ChrNames <- c(1:19,"X","Y")
+ChrNames <- c(1:22,"X","Y")
 
 yall<-yall[yall$genes$Chr%in%ChrNames, ]
 
@@ -60,8 +56,8 @@ head(Coverage)
 
 ## As a conservative rule of thumb, we require a CpG site to have a total count (both methylated and unmethylated) of at least 8 in every sample before it is considered in the study.
 #nsamples<-length(colnames(Coverage))
-HasCoverage <- rowSums(Coverage >= 5) == 20   ### 20 total number of samples, seems very conservative
-#table(HasCoverage)
+HasCoverage <- rowSums(Coverage >= 5) == length(targets$Sample)  ### 20 total number of samples, seems very conservative
+
 
 #We also filter out CpGs that are never methylated or always methylated as they provide no information about differential methylation:
 #HasBoth <- rowSums(Me) > 0 & rowSums(Un) > 0
@@ -140,8 +136,8 @@ for(jj in 1:length(group)){
         saveRDS(lrt, file=paste(groups[jj],".lrt.rds",sep = ""))
         topTags(lrt)
 
-        topTags_50k<-topTags(lrt,50000)
-        write.table(topTags_50k,file=paste(groups[jj],".topTags_50k.table",sep = ""))
+        topTags_50k<-topTags(lrt,20000)
+        write.table(topTags_50k,file=paste(groups[jj],".topTags_20k.table",sep = ""))
 
         #The total number of DMRs in each direction at a FDR of 5% can be examined with decide Tests
         #summary(decideTests(lrt))
