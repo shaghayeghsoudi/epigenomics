@@ -1,0 +1,2 @@
+readRDS("~/Dropbox/cancer_reserach/sarcoma/sarcoma_analysis/methylation/RRBS/downstream/edgeR/pilot1/has-coverage-both-filter/GroupBeforeRT-GroupNormal.promoter.lrt.rds")
+load("/Users/shsoudi/Dropbox/cancer_reserach/sarcoma/sarcoma_analysis/methylation/RRBS/downstream/edgeR/pilot1/has-coverage-filter/GroupafterRT-GroupNormal.lrt.rds")
