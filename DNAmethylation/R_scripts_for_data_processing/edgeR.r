@@ -54,9 +54,16 @@ Coverage <- Me + Un
 head(Coverage)
 
 
-## As a conservative rule of thumb, we require a CpG site to have a total count (both methylated and unmethylated) of at least 8 in every sample before it is considered in the study.
+## NOTE: As a conservative rule of thumb, we require a CpG site to have a total count (both methylated and unmethylated) of at least 8 in every sample before it is considered in the study.
 #nsamples<-length(colnames(Coverage))
 HasCoverage <- rowSums(Coverage >= 5) == length(targets$Sample)  ### 20 total number of samples, seems very conservative
+
+## logic:
+#head(rowSums(Coverage >= 5))  ### for each CpG position find how many samples have at least 5 reads
+#1-10470 1-10472 1-10485 1-10489 1-10490 1-10493 
+#      2       2       2       0       3       0 
+#rowSums(Coverage >= 5) == length(targets$Sample)
+# keep positions that all samples have at least 5 reads
 
 
 #We also filter out CpGs that are never methylated or always methylated as they provide no information about differential methylation:
