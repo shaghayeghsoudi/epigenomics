@@ -57,6 +57,7 @@ head(Coverage)
 ## NOTE: As a conservative rule of thumb, we require a CpG site to have a total count (both methylated and unmethylated) of at least 8 in every sample before it is considered in the study.
 #nsamples<-length(colnames(Coverage))
 HasCoverage <- rowSums(Coverage >= 5) == length(targets$Sample)  ### 20 total number of samples, seems very conservative
+#IMPORTANT NOTE: This filtering criterion could be relaxed somewhat in principle but the number of CpGs kept in the analysis is large enough for our purposes.
 
 ## logic:
 #head(rowSums(Coverage >= 5))  ### for each CpG position find how many samples have at least 5 reads
@@ -98,8 +99,19 @@ colnames(M) <- targets$Sample
 #dev.off()
 
 ## RT based ##
-pdf("M-plot-RTbased-colored.pdf", height = 10, width = 10)
-plotMDS(M, col=c(rep("springgreen4",3), rep("steelblue4",3),rep("springgreen4",2),rep("tomato4",1),rep("springgreen4",2),rep("tomato4",1),rep("springgreen4",3),rep("tomato4",4),rep("springgreen4",1)), main="M-values",cex=0.8)
+pdf("M-plot-RTbased-colored_adjusted.pdf", height = 10, width = 10)
+par(mar = c(7, 7, 7, 7)) # Set the margin on all sides to 6
+plotMDS(M, pch =19,
+     col=c(rep("forestgreen",3), 
+     rep("steelblue4",3),
+     rep("forestgreen",2),
+     rep("tomato",1),
+     rep("forestgreen",2),
+     rep("tomato",1),
+     rep("forestgreen",3),
+     rep("tomato",4),
+     rep("forestgreen",1), alpha = 0.5), 
+     main="M-values",cex=2.5,cex.axis=2,cex.lab=2.8)
 dev.off()
 
 
