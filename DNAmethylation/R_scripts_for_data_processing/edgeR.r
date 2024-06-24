@@ -117,7 +117,7 @@ dev.off()
 
 ####################
 ##Design matrix ####
-#One aim of this study is to identify differentially methylated (DM) loci between the different cell populations.
+## identify differentially methylated (DM) loci between the different cell populations.
 designSL <- model.matrix(~0+Group, data=targets)
 design <- modelMatrixMeth(designSL)
 
@@ -144,12 +144,16 @@ fit <- glmFit(y1, design)
 ### assing groups for comparisons
 groups<-c("GroupBeforeRT-GroupNormal","GroupafterRT-GroupNormal","GroupBeforeRT-GroupafterRT")
 
+#### Load Cosmic cancer genes
+cancer_genes<-read.csv(file = "~/Desktop/Census_all.csv", header = TRUE, sep = ",")[,c("Gene.Symbol","Role.in.Cancer")]
+
+
 
 ## loop through each comparison type
 for(jj in 1:length(group)){
 
-        contr <- makeContrasts(GroupNvsB = groups[jj], levels=design)
-        #contr <- makeContrasts(GroupNvsB = GroupNormal-GroupBeforeRT, levels=design)
+        #contr <- makeContrasts(GroupNvsB = groups[jj], levels=design)
+        contr <- makeContrasts(GroupNvsB = GroupNormal-GroupBeforeRT, levels=design)
 
         lrt <- glmLRT(fit, contrast=contr)
         saveRDS(lrt, file=paste(groups[jj],".lrt.rds",sep = ""))
@@ -166,6 +170,7 @@ for(jj in 1:length(group)){
         #### custom visulaization #####
         #making a volcano plot #
         pdf(file = paste("enhancedVolcao_edgeR",groups[jj],".pdf",sep = ""), width=14, height = 14)
+         
         aa<-lrt$table
         EnhancedVolcano(aa,
                  lab = rownames(aa),
@@ -213,16 +218,37 @@ for(jj in 1:length(group)){
         topTags(lrtpr, n=20)
 
         aa_promoter<-lrtpr$table
+        gg<-lrtpr$genes
+        aa_promoter_genes<-cbind(aa_promoter,gg)
+        rownames(aa_promoter_genes)<-aa_promoter_genes$Symbol
 
-    pdf(file = paste("enhancedVolcao_promoter_edgeR",groups[jj],".pdf",sep = ""), width=14, height = 14)
-    EnhancedVolcano(aa_promoter,
-                 lab = rownames(aa_promoter),
+        cancer_promote<-aa_promoter_genes[aa_promoter_genes$Symbol%in%cancer_genes$Gene.Symbol,]
+        cancer_promote$Symbol
+
+
+        top<-data.frame(topTags(lrtpr, n=1000))
+        top_cancer<-top[top$Symbol%in%cancer_genes$Gene.Symbol,]
+
+
+    pdf(file = paste("enhancedVolcao_promoter_annotatted_edgeR",groups[jj],".pdf",sep = ""), width=8, height = 9)
+    
+    #pdf(file = "~/desktop/bb.pdf", width=8, height = 9)
+    EnhancedVolcano(aa_promoter_genes,
+                 lab = rownames(aa_promoter_genes),
                  x = 'logFC',
                  y = 'PValue',
                  pCutoff = 0.001,
                  FCcutoff = 2,
-                 pointSize = 2.0,
-                 labSize = 2.0)
+                 pointSize = 3.0,
+                 labSize = 5.0, 
+                 selectLab =top_cancer$Symbol,
+                 #selectLab =co_genes,
+                 #boxedLabels = TRUE,
+                 parseLabels = TRUE,
+                 drawConnectors = TRUE,
+                 widthConnectors = 0.75,
+                 colConnectors = 'black',
+                 max.overlaps=30)
     dev.off()   
 
 
@@ -231,6 +257,7 @@ for(jj in 1:length(group)){
 } ## end of group loop
 
 
+co_genes<-c("CCNB1IP1","NFKB2","ALK","CNOT3","SRC","ZNF479","KRAS","TPM4","MYCN","KLF4","MYO5A","POLE","CHD2","ACVR1B","MUC16","CHD2","FUS","ARHGEF10L","NTRK2","CRTC3","SS18L1","TFPT","XPC","PML")
 
 ################################
 ####### downstream edgeR #######
