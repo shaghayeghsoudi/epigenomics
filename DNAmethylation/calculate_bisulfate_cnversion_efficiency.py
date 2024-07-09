@@ -1,6 +1,6 @@
 
 
-## Assuming you have a file with methylation calls for each cytosine, here’s a script to calculate conversion efficiency:
+### Assuming you have a file with methylation calls for each cytosine, here’s a script to calculate conversion efficiency:
 pip install pandas
 
 
