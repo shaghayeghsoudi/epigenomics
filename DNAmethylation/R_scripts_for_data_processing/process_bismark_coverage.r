@@ -67,7 +67,7 @@ dev.off()
 # create methylation stats file
 meta<-read.delim(file = "~/Dropbox/cancer_reserach/sarcoma/sarcoma_analysis/methylation/RRBS/metadata/RRBS_methylation_pilot_experiment_samples.csv", header = TRUE, sep = ",")[,c("sample_id","tissue","RT_status")]
 names(coverage_good)<-c("chr", "start", "end", "methylation_ratio", "count_methylated", "count_unmethylated","sample_id")
-overage_good_meta<-merge(coverage_good,meta, by.x = "sample_id", by.y = "sample_id")
+coverage_good_meta<-merge(coverage_good,meta, by.x = "sample_id", by.y = "sample_id")
         
 
 
