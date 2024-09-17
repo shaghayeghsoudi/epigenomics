@@ -1,0 +1,433 @@
+### Annotate differentially methylated regions (DMRs) and perform gene enrichment anakysis
+
+## Step 1: Annotating Differentially Methylated Regions (DMRs)
+rm(list = ls())
+
+# Load the libraries
+library(annotatr)
+library(rtracklayer)
+library(ggplot2)
+library(GenomicRanges)
+library(ChIPseeker)
+library(TxDb.Hsapiens.UCSC.hg19.knownGene)  # TxDb for the human genome hg19
+library(org.Hs.eg.db)  # Annotation database for human genes
+library(clusterProfiler)
+library(enrichplot)
+
+
+dmrs<-read.table(file = "~/Dropbox/cancer_reserach/sarcoma/sarcoma_analysis/methylation/analysis_for_grant_Sep24/DSS-downstream/DSS-downstreamDifferential_methylation_Regions_T1_T2.txt", header = TRUE)
+dmrs$chr <-paste("chr",dmrs$chr, sep = "")
+
+## convert DMR file into Granges
+dmr_granges <- GRanges(
+    seqnames = dmrs$chr,
+    ranges = IRanges(start = dmrs$start, end = dmrs$end),
+    strand = "*",  # Assume no strand information for DMRs
+    length = dmrs$length,  # Methylation difference
+    nCG = dmrs$nCG ,
+    meanMethy1 = dmrs$meanMethy1,
+    meanMethy2 = dmrs$meanMethy2,
+    diff.Methy = dmrs$diff.Methy,
+    areaStat = dmrs$areaStat
+
+    # p-value
+)
+
+
+
+
+# Create a density plot or frequency plot
+volcano_plot_no_pvalue <- ggplot(dmrs, aes(x = diff.Methy)) +
+  geom_histogram(binwidth = 0.05, fill = "blue", alpha = 0.7) +  # Histogram of methylation differences
+  theme_minimal() +  # Clean theme
+  labs(
+    title = "Distribution of Methylation Differences (DMRs)",
+    x = "Methylation Difference (diff.Methy)",
+    y = "Count"
+  ) +
+  geom_vline(xintercept = c(-0.25, 0.25), col = "red", linetype = "dashed")  # Optional threshold for effect size
+
+
+print(volcano_plot_no_pvalue)
+
+
+
+# Create a density plot (alternative to histogram)
+pdf(file = "Dropbox/cancer_reserach/sarcoma/sarcoma_analysis/methylation/analysis_for_grant_Sep24/DSS-downstream/densityplot_diff_methylation_T1T2_DMRs_DSS.pdf")
+volcano_plot_density <- ggplot(dmrs, aes(x = diff.Methy)) +
+  geom_density(fill = "blue", alpha = 0.5) +  # Density plot of methylation differences
+  theme_minimal() +
+  labs(
+    title = "Density Plot of Methylation Differences (DMRs)",
+    x = "Methylation Difference (diff.Methy)",
+    y = "Density"
+  ) +
+  geom_vline(xintercept = c(-0.2, 0.2), 
+  col = "red", 
+  linetype = "dashed")+ 
+  theme_bw() +
+  theme(panel.border = element_blank(), 
+  panel.grid.major = element_blank(),
+  panel.grid.minor = element_blank(), 
+  axis.line = element_line(colour = "black"),
+  text=element_text(size=20),
+  plot.margin = unit(c(1,1,1,1), "cm"))
+
+print(volcano_plot_density)
+dev.off()
+
+#Annotate the GRanges Object
+
+
+# Build annotations for human (e.g., hg19 genome)
+annotations_cpg <- build_annotations(genome = 'hg19', annotations = c('hg19_cpg_islands', 'hg19_cpg_shores','hg19_cpg_shelves','hg19_cpg_inter'))
+
+
+annotations_all <- build_annotations(genome = 'hg19', 
+                                 annotations = c('hg19_cpg_islands',
+                                                 'hg19_cpg_shores',
+                                                 'hg19_cpg_shelves',
+                                                 'hg19_cpg_inter', # Open Sea
+                                                 'hg19_basicgenes', # Gene annotations
+                                                 'hg19_genes_intergenic', # Intergenic regions
+                                                 'hg19_genes_intronexonboundaries', # Exon-intron boundaries
+                                                 'hg19_enhancers_fantom', # FANTOM5 Enhancers
+                                                 'hg19_genes_promoters', # Promoters
+                                                 'hg19_genes_5UTRs', # 5' UTR regions
+                                                 'hg19_genes_3UTRs'  # 3' UTR regions
+                                                 ))
+
+# Annotate the GRanges DMR object
+dmr_annotated <- annotate_regions(regions = dmr_granges, annotations = annotations, ignore.strand = TRUE)
+dmr_annotated_all <- annotate_regions(regions = dmr_granges, annotations = annotations_all, ignore.strand = TRUE)
+
+write.table((data.frame(dmr_annotated_all)), file = "Dropbox/cancer_reserach/sarcoma/sarcoma_analysis/methylation/analysis_for_grant_Sep24/DSS-downstream/annotatedall_DMRs_DSS_T1T2.table",col.names= TRUE, row.names = FALSE, sep = "\t", quote = FALSE) 
+
+################
+################
+
+### format annotation file
+#annotation<-read.table(file = "~/Dropbox/cancer_reserach/sarcoma/sarcoma_analysis/methylation/analysis_for_grant_Sep24/DSS-downstream/hg19_annotation.table", header = TRUE, sep = "\t")
+#annot_chr1<-annotation[annotation$seqnames=="chr1",]
+
+#annot_chr1_Granges <- GRanges(
+#    seqnames = annot_chr1$seqnames,
+#    ranges = IRanges(start = annot_chr1$start, end = annot_chr1$end),
+#    strand = "*",
+#    id = annot_chr1$id ,
+#    tx_id= annot_chr1$tx_id,
+#    gene_id= annot_chr1$gene_id,
+#    symbol= annot_chr1$symbol,
+#    type= annot_chr1$type
+#
+#    )
+
+
+# format DMR file
+#dmrs_chr1<-dmrs[dmrs$chr=="1",]
+#dmrs_chr1$chr<-paste("chr",dmrs_chr1$chr,sep = "")
+
+
+#dmrs_chr1_Granges <- GRanges(
+#    seqnames = dmrs_chr1$chr,
+#    ranges = IRanges(start = dmrs_chr1$start, end = dmrs_chr1$end),
+#    strand = "*",  # Assume no strand information for DMRs
+#    length = dmrs_chr1$length,  # Methylation difference
+#    nCG = dmrs_chr1$nCG ,
+#    meanMethy1 = dmrs_chr1$meanMethy1,
+#    meanMethy2 = dmrs_chr1$meanMethy2,
+#    diff.Methy = dmrs_chr1$diff.Methy,
+#    areaStat = dmrs_chr1$areaStat
+#
+    # p-value
+#)
+
+
+#overlaps <- findOverlaps(annot_chr1_Granges, dmrs_chr1_Granges,minoverlap = 10)
+
+#overlapping_dmrs_chr1 <- dmrs_chr1_Granges[subjectHits(overlaps)]
+#overlapping_annot_chr1 <- annot_chr1_Granges[queryHits(overlaps)]
+
+#mcols(overlapping_dmrs_chr1)
+#mcols(overlapping_annot_chr1)
+
+
+
+#result_10bp <- data.frame(
+#  gr1_seqnames = seqnames(overlapping_dmrs_chr1),
+#  gr1_start = start(overlapping_dmrs_chr1),
+#  gr1_end = end(overlapping_dmrs_chr1),
+#  gr1_length= mcols(overlapping_dmrs_chr1)$length ,
+#  gr1_nCG = mcols(overlapping_dmrs_chr1)$nCG,
+#  gr1_meanMethy1 = mcols(overlapping_dmrs_chr1)$meanMethy1,
+#  gr1_meanMethy2 = mcols(overlapping_dmrs_chr1)$meanMethy2,
+#  gr1_diff.Methy = mcols(overlapping_dmrs_chr1)$diff.Methy,
+#  gr1_areaStat = mcols(overlapping_dmrs_chr1)$areaStat,
+#  gr2_seqnames = seqnames(overlapping_annot_chr1),
+#  gr2_start = start(overlapping_annot_chr1),
+#  gr2_end = end(overlapping_annot_chr1),
+#  gr2_id = mcols(overlapping_annot_chr1)$id,
+#  gr2_gene_id = mcols(overlapping_annot_chr1)$gene_id,
+#  gr2_symbol = mcols(overlapping_annot_chr1)$symbol,
+#  gr2_type = mcols(overlapping_annot_chr1)$type
+# 
+#
+#)
+
+
+###########################################################
+####### annotating DMRs and enrichment analysis ###########
+###########################################################
+
+
+
+# Assume `dmr_gr` is your GRanges object containing DMRs
+txdb <- TxDb.Hsapiens.UCSC.hg19.knownGene
+
+
+## load dmr table
+dmrs<-read.table(file = "~/Dropbox/cancer_reserach/sarcoma/sarcoma_analysis/methylation/analysis_for_grant_Sep24/DSS-downstream/DSS-downstreamDifferential_methylation_Regions_T1_T2.txt", header = TRUE)
+dmrs$chr<-paste("chr",dmrs$chr, sep = "")
+
+dmrs_hyper_T1_T1T2 <-dmrs[dmrs$diff.Methy > 0,]
+dmrs_hyper_T2_T1T2 <-dmrs[dmrs$diff.Methy < 0,]
+
+list_names<-c("dmrs_hyper_T1_T1T2","dmrs_hyper_T2_T1T2")
+methyl_types<-list(dmrs_hyper_T1_T1T2,dmrs_hyper_T2_T1T2)
+
+for (cc in 1:length(methyl_types)){
+
+    methyl_types_foc<-data.frame(methyl_types[cc])
+    names<-list_names[cc]
+
+    dmrs_focal_Granges <- GRanges(     ### convert DMR table into Granges
+    seqnames = methyl_types_foc$chr,
+    ranges = IRanges(start = methyl_types_foc$start, end = methyl_types_foc$end),
+    strand = "*",                      # Assume no strand information for DMRs
+    length = methyl_types_foc$length,  
+    nCG = methyl_types_foc$nCG ,
+    meanMethy1 = methyl_types_foc$meanMethy1,
+    meanMethy2 = methyl_types_foc$meanMethy2,
+    diff.Methy = methyl_types_foc$diff.Methy,
+    areaStat = methyl_types_foc$areaStat
+    # p-value
+    )
+
+    ### annotate DMRs with annotar ###
+   annotations_all <- build_annotations(genome = 'hg19', 
+                                 annotations = c('hg19_basicgenes', # Gene annotations
+                                                 'hg19_genes_intergenic', # Intergenic regions
+                                                 'hg19_genes_intronexonboundaries', # Exon-intron boundaries
+                                                 'hg19_enhancers_fantom', # FANTOM5 Enhancers
+                                                 'hg19_genes_promoters', # Promoters
+                                                 'hg19_genes_5UTRs', # 5' UTR regions
+                                                 'hg19_genes_3UTRs'  # 3' UTR regions
+                                                 ))    
+
+
+    # Intersect the regions we read in with the annotations
+    dm_annotated = annotate_regions(
+    regions = dmrs_focal_Granges,
+    annotations = annotations_all,
+    ignore.strand = TRUE,
+    quiet = FALSE)
+    # A GRanges object is returned
+    print(dm_annotated)    
+
+    # Coerce to a data.frame
+    df_dm_annotated = data.frame(dm_annotated)
+    write.table(df_dm_annotated, paste("Dropbox/cancer_reserach/sarcoma/sarcoma_analysis/methylation/analysis_for_grant_Sep24/DSS-downstream/gene_enrichment/annotated_DMRs_annotar_",list_names[cc],".txt", sep =""), col.names = TRUE, row.names = FALSE, sep = "\t", quote = FALSE)
+
+    genesID_focal_annotr <- na.omit(unique(df_dm_annotated$annot.gene_id))                          
+    
+
+    # Perform KEGG pathway enrichment analysis
+    kegg_results_annoar <- enrichKEGG(gene         = genesID_focal_annotr ,
+                           organism     = "hsa",  # hsa is for Homo sapiens
+                           pAdjustMethod = "BH",
+                           pvalueCutoff = 0.05,
+                           qvalueCutoff = 0.05)
+
+
+    kegg_results_annoar_df<-as.data.frame(kegg_results_annoar)
+
+    write.table(kegg_results_annoar_df, paste("Dropbox/cancer_reserach/sarcoma/sarcoma_analysis/methylation/analysis_for_grant_Sep24/DSS-downstream/gene_enrichment/gene_enrichment_KEGG_annotatted_by_annotar_",list_names[cc],".txt", sep =""), col.names = TRUE, row.names = FALSE, sep = "\t", quote = FALSE)
+    
+    ### plot the results 
+    pdf(file = paste("Dropbox/cancer_reserach/sarcoma/sarcoma_analysis/methylation/analysis_for_grant_Sep24/DSS-downstream/gene_enrichment/dot_plot_gene_enrichment_KEGG_annotatted_by_annotar_",list_names[cc],".pdf", sep =""))
+    dot_kegg_annotar<-dotplot(kegg_results_annoar, showCategory=30,font.size = 8)
+    print(dot_kegg_annotar)
+    dev.off()
+                       
+    # Custom ridge plot with ggridges
+    #ggplot(kegg_results_annoar_df, aes(x = GeneRatio, y = Description, fill = p.adjust)) + 
+    #geom_density_ridges(scale = 3, rel_min_height = 0.01) + 
+    #scale_fill_viridis_c() + 
+    #labs(title = "Custom Ridge Plot for Gene Enrichment") + 
+    #theme_minimal()
+    
+
+    ##########################################################################################
+    ####  Alternative Option for annotating DMRs: Annotate DMRs to genes with annotatePeak ####
+    dmr_annotated_focal_annotpeak <- annotatePeak(dmrs_focal_Granges , TxDb=txdb, annoDb="org.Hs.eg.db", addFlankGeneInfo = TRUE, tssRegion=c(-3000, 3000))
+    #head(head(as.data.frame(dmr_annotated_focal@anno)))
+
+
+    # Extract gene symbols or Entrez IDs
+    genesID_focal <- as.data.frame(dmr_annotated_focal_annotpeak)$geneId   # Use geneId if Entrez IDs are preferred
+    #genessymbol_focal <- unique(as.data.frame(dmr_annotated)$SYMBOL)  #
+    genes_foc <- unique(genesID_focal)  # Remove duplicates
+
+
+    # Perform GO enrichment analysis
+    go_results <- enrichGO(gene         = genes_foc,         # List of gene IDs (Entrez or SYMBOL)
+                       OrgDb        = org.Hs.eg.db,  # The organism's annotation database
+                       keyType      = "ENTREZID",    # Set to "SYMBOL" if using gene symbols
+                       ont          = "ALL",         # Specify GO category: BP (biological process), CC (cellular component), MF (molecular function), or "ALL"
+                       pAdjustMethod = "BH",         # Adjust p-values using the Benjamini-Hochberg method
+                       pvalueCutoff = 0.05,          # P-value cutoff
+                       qvalueCutoff = 0.05)          # Q-value cutoff (adjusted p-value)
+
+    go_results_df<-as.data.frame(go_results)
+    write.table(go_results_df, paste("Dropbox/cancer_reserach/sarcoma/sarcoma_analysis/methylation/analysis_for_grant_Sep24/DSS-downstream/gene_enrichment/gene_enrichment_enrichGO_",list_names[cc],".txt", sep =""), col.names = TRUE, row.names = FALSE, sep = "\t", quote = FALSE)
+    
+
+
+    # Perform KEGG pathway enrichment analysis
+    kegg_results <- enrichKEGG(gene         = genes_foc,
+                           organism     = "hsa",  # hsa is for Homo sapiens
+                           pAdjustMethod = "BH",
+                           pvalueCutoff = 0.05,
+                           qvalueCutoff = 0.05)
+    
+    kegg_results_df<-data.frame( kegg_results)
+    
+    
+    pdf(file = paste("Dropbox/cancer_reserach/sarcoma/sarcoma_analysis/methylation/analysis_for_grant_Sep24/DSS-downstream/gene_enrichment/dot_plot_gene_enrichment_KEGG_annotatted_by_annotPeak_",list_names[cc],".pdf", sep =""))
+    dot_kegg_annotar<-dotplot(kegg_results, showCategory=30,font.size = 8)
+    print(dot_kegg_annotar)
+    dev.off()
+    write.table(kegg_results_df, paste("Dropbox/cancer_reserach/sarcoma/sarcoma_analysis/methylation/analysis_for_grant_Sep24/DSS-downstream/gene_enrichment/gene_enrichment_KEGG_annotated_by_annotatePeak",list_names[cc],".txt", sep =""), col.names = TRUE, row.names = FALSE, sep = "\t", quote = FALSE)
+                      
+
+     
+                      
+
+} ### for loop
+
+
+
+dmrs_all_Granges <- GRanges(
+    seqnames = dmrs$chr,
+    ranges = IRanges(start = dmrs$start, end = dmrs$end),
+    strand = "*",  # Assume no strand information for DMRs
+    length = dmrs$length,  # Methylation difference
+    nCG = dmrs$nCG ,
+    meanMethy1 = dmrs$meanMethy1,
+    meanMethy2 = dmrs$meanMethy2,
+    diff.Methy = dmrs$diff.Methy,
+    areaStat = dmrs$areaStat
+
+    # p-value
+)
+
+# Annotate DMRs to genes
+dmr_annotated <- annotatePeak(dmrs_all_Granges, TxDb=txdb, annoDb="org.Hs.eg.db")
+
+# View the annotated DMRs
+
+
+
+
+# Extract gene symbols or Entrez IDs
+genes <- as.data.frame(dmr_annotated)$geneId  # Use geneId if Entrez IDs are preferred
+genes <- unique(genes)  # Remove duplicates
+
+#genes <- unique(as.data.frame(dmr_annotated)$SYMBOL)  # Use SYMBOL if you prefer gene symbols
+
+
+#Perform Gene Enrichment Analysis
+
+
+# Perform GO enrichment analysis
+go_results <- enrichGO(gene         = genes,         # List of gene IDs (Entrez or SYMBOL)
+                       OrgDb        = org.Hs.eg.db,  # The organism's annotation database
+                       keyType      = "ENTREZID",    # Set to "SYMBOL" if using gene symbols
+                       ont          = "ALL",         # Specify GO category: BP (biological process), CC (cellular component), MF (molecular function), or "ALL"
+                       pAdjustMethod = "BH",         # Adjust p-values using the Benjamini-Hochberg method
+                       pvalueCutoff = 0.05,          # P-value cutoff
+                       qvalueCutoff = 0.05)          # Q-value cutoff (adjusted p-value)
+                       
+
+
+gse <- gseGO(geneList=genes, 
+             ont ="ALL", 
+             keyType = "ENSEMBL", 
+             nPerm = 10000, 
+             pvalueCutoff = 0.05, 
+             nPerm = 10000, 
+             minGSSize = 3, 
+             maxGSSize = 800, 
+             verbose = TRUE, 
+             OrgDb = org.Hs.eg.db, 
+             pAdjustMethod = "BH")
+
+
+
+# View the results
+
+head(go_results)
+
+dotplot(gse, showCategory=10, split=".sign") + facet_grid(.~.sign)
+
+
+# Plot the results using a dotplot
+dotplot(go_results, showCategory=20, split=".sign") + facet_grid(.~.sign)
+
+### KEGG Pathway Enrichment
+# Perform KEGG pathway enrichment analysis
+kegg_results <- enrichKEGG(gene         = genes,
+                           organism     = "hsa",  # hsa is for Homo sapiens
+                           pAdjustMethod = "BH",
+                           pvalueCutoff = 0.05,
+                           qvalueCutoff = 0.05)
+
+# View the results
+head(kegg_results)
+
+# Plot the results using a barplot
+barplot(kegg_results, showCategory=20)
+
+emapplot(kegg_results, showCategory = 10)
+#Visualize the Enrichment Results
+
+#Dotplot of GO Results
+
+
+dotplot(kegg_results, showCategory=20)
+
+
+
+emapplot(kegg_results)
+
+ridgeplot(kegg_results) + labs(x = "enrichment distribution")
+
+
+########################
+###### example data
+
+drosphila_example_de
+
+df = read.csv("~/Downloads/drosphila_example_de.csv", header=TRUE)
+
+# we want the log2 fold change 
+original_gene_list <- df$log2FoldChange
+
+# name the vector
+names(original_gene_list) <- df$X
+
+# omit any NA values 
+gene_list<-na.omit(original_gene_list)
+
+# sort the list in decreasing order (required for clusterProfiler)
+gene_list = sort(gene_list, decreasing = TRUE)
