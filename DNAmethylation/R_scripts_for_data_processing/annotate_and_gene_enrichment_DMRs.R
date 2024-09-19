@@ -35,8 +35,9 @@ dmr_granges <- GRanges(
 
 
 
-
-# Create a density plot or frequency plot
+################# plot the results #################
+## Create a simple density plot or frequency plot ##
+pdf(file = "Dropbox/cancer_reserach/sarcoma/sarcoma_analysis/methylation/analysis_for_grant_Sep24/DSS-downstream/simple_histogram_diff_methylation_T1T2_DMRs_DSS.pdf")
 volcano_plot_no_pvalue <- ggplot(dmrs, aes(x = diff.Methy)) +
   geom_histogram(binwidth = 0.05, fill = "blue", alpha = 0.7) +  # Histogram of methylation differences
   theme_minimal() +  # Clean theme
@@ -46,8 +47,6 @@ volcano_plot_no_pvalue <- ggplot(dmrs, aes(x = diff.Methy)) +
     y = "Count"
   ) +
   geom_vline(xintercept = c(-0.25, 0.25), col = "red", linetype = "dashed")  # Optional threshold for effect size
-
-
 print(volcano_plot_no_pvalue)
 
 
@@ -76,32 +75,37 @@ volcano_plot_density <- ggplot(dmrs, aes(x = diff.Methy)) +
 print(volcano_plot_density)
 dev.off()
 
+
+
 #Annotate the GRanges Object
-
-
 # Build annotations for human (e.g., hg19 genome)
-annotations_cpg <- build_annotations(genome = 'hg19', annotations = c('hg19_cpg_islands', 'hg19_cpg_shores','hg19_cpg_shelves','hg19_cpg_inter'))
+## CpG islands only
+#annotations_cpg <- build_annotations(genome = 'hg19', annotations = c('hg19_cpg_islands', 'hg19_cpg_shores','hg19_cpg_shelves','hg19_cpg_inter'))
+
+## all conding and non-coding 
+#annotations_all <- build_annotations(genome = 'hg19', 
+#                                 annotations = c('hg19_cpg_islands',
+#                                                 'hg19_cpg_shores',
+#                                                 'hg19_cpg_shelves',
+#                                                 'hg19_cpg_inter', # Open Sea
+#                                                 'hg19_basicgenes', # Gene annotations
+#                                                 'hg19_genes_intergenic', # Intergenic regions
+#                                                 'hg19_genes_intronexonboundaries', # Exon-intron boundaries
+#                                                  'hg19_enhancers_fantom', # FANTOM5 Enhancers
+#                                                 'hg19_genes_promoters', # Promoters
+#                                                 'hg19_genes_5UTRs', # 5' UTR regions
+#                                                 'hg19_genes_3UTRs'  # 3' UTR regions
+#                                                 ))
 
 
-annotations_all <- build_annotations(genome = 'hg19', 
-                                 annotations = c('hg19_cpg_islands',
-                                                 'hg19_cpg_shores',
-                                                 'hg19_cpg_shelves',
-                                                 'hg19_cpg_inter', # Open Sea
-                                                 'hg19_basicgenes', # Gene annotations
-                                                 'hg19_genes_intergenic', # Intergenic regions
-                                                 'hg19_genes_intronexonboundaries', # Exon-intron boundaries
-                                                 'hg19_enhancers_fantom', # FANTOM5 Enhancers
-                                                 'hg19_genes_promoters', # Promoters
-                                                 'hg19_genes_5UTRs', # 5' UTR regions
-                                                 'hg19_genes_3UTRs'  # 3' UTR regions
-                                                 ))
+# only to promoters
+#annotations_promotes <- build_annotations(genome = 'hg19', annotations = "hg19_genes_promoters")
+
 
 # Annotate the GRanges DMR object
-dmr_annotated <- annotate_regions(regions = dmr_granges, annotations = annotations, ignore.strand = TRUE)
-dmr_annotated_all <- annotate_regions(regions = dmr_granges, annotations = annotations_all, ignore.strand = TRUE)
+#dmr_annotated_promoters <- annotate_regions(regions = dmr_granges, annotations = annotations_promotes , ignore.strand = TRUE)
 
-write.table((data.frame(dmr_annotated_all)), file = "Dropbox/cancer_reserach/sarcoma/sarcoma_analysis/methylation/analysis_for_grant_Sep24/DSS-downstream/annotatedall_DMRs_DSS_T1T2.table",col.names= TRUE, row.names = FALSE, sep = "\t", quote = FALSE) 
+#write.table((data.frame(dmr_annotated_promoters)), file = "Dropbox/cancer_reserach/sarcoma/sarcoma_analysis/methylation/analysis_for_grant_Sep24/DSS-downstream/annotate_promoters_DMRs_DSS_T1T2.table",col.names= TRUE, row.names = FALSE, sep = "\t", quote = FALSE) 
 
 ################
 ################
@@ -179,8 +183,6 @@ write.table((data.frame(dmr_annotated_all)), file = "Dropbox/cancer_reserach/sar
 ####### annotating DMRs and enrichment analysis ###########
 ###########################################################
 
-
-
 # Assume `dmr_gr` is your GRanges object containing DMRs
 txdb <- TxDb.Hsapiens.UCSC.hg19.knownGene
 
@@ -192,7 +194,7 @@ dmrs$chr<-paste("chr",dmrs$chr, sep = "")
 dmrs_hyper_T1_T1T2 <-dmrs[dmrs$diff.Methy > 0,]
 dmrs_hyper_T2_T1T2 <-dmrs[dmrs$diff.Methy < 0,]
 
-list_names<-c("dmrs_hyper_T1_T1T2","dmrs_hyper_T2_T1T2")
+list_names<-c("dmrs_hyper_T1_T1T2","dmrs_hyper_T2_T1T2")  ### adjust this
 methyl_types<-list(dmrs_hyper_T1_T1T2,dmrs_hyper_T2_T1T2)
 
 for (cc in 1:length(methyl_types)){
@@ -214,21 +216,24 @@ for (cc in 1:length(methyl_types)){
     )
 
     ### annotate DMRs with annotar ###
-   annotations_all <- build_annotations(genome = 'hg19', 
-                                 annotations = c('hg19_basicgenes', # Gene annotations
-                                                 'hg19_genes_intergenic', # Intergenic regions
-                                                 'hg19_genes_intronexonboundaries', # Exon-intron boundaries
-                                                 'hg19_enhancers_fantom', # FANTOM5 Enhancers
-                                                 'hg19_genes_promoters', # Promoters
-                                                 'hg19_genes_5UTRs', # 5' UTR regions
-                                                 'hg19_genes_3UTRs'  # 3' UTR regions
-                                                 ))    
+    #annotations_all <- build_annotations(genome = 'hg19', 
+    #                             annotations = c('hg19_basicgenes', # Gene annotations
+    #                                             'hg19_genes_intergenic', # Intergenic regions
+    #                                             'hg19_genes_intronexonboundaries', # Exon-intron boundaries
+    #                                             'hg19_enhancers_fantom', # FANTOM5 Enhancers
+    #                                             'hg19_genes_promoters', # Promoters
+    #                                             'hg19_genes_5UTRs', # 5' UTR regions
+    #                                             'hg19_genes_3UTRs'  # 3' UTR regions
+    #                                             ))  
+
+    dmrs_annotations <- build_annotations(genome = 'hg19', 
+                                 annotations = 'hg19_genes_promoters') # Gene annotations                                               
 
 
     # Intersect the regions we read in with the annotations
     dm_annotated = annotate_regions(
     regions = dmrs_focal_Granges,
-    annotations = annotations_all,
+    annotations =   dmrs_annotations,
     ignore.strand = TRUE,
     quiet = FALSE)
     # A GRanges object is returned
@@ -236,7 +241,7 @@ for (cc in 1:length(methyl_types)){
 
     # Coerce to a data.frame
     df_dm_annotated = data.frame(dm_annotated)
-    write.table(df_dm_annotated, paste("Dropbox/cancer_reserach/sarcoma/sarcoma_analysis/methylation/analysis_for_grant_Sep24/DSS-downstream/gene_enrichment/annotated_DMRs_annotar_",list_names[cc],".txt", sep =""), col.names = TRUE, row.names = FALSE, sep = "\t", quote = FALSE)
+    write.table(df_dm_annotated, paste("Dropbox/cancer_reserach/sarcoma/sarcoma_analysis/methylation/analysis_for_grant_Sep24/DSS-downstream/gene_enrichment/annotated_DMRs_Promoter_annotar_",list_names[cc],".txt", sep =""), col.names = TRUE, row.names = FALSE, sep = "\t", quote = FALSE)
 
     genesID_focal_annotr <- na.omit(unique(df_dm_annotated$annot.gene_id))                          
     
@@ -251,10 +256,10 @@ for (cc in 1:length(methyl_types)){
 
     kegg_results_annoar_df<-as.data.frame(kegg_results_annoar)
 
-    write.table(kegg_results_annoar_df, paste("Dropbox/cancer_reserach/sarcoma/sarcoma_analysis/methylation/analysis_for_grant_Sep24/DSS-downstream/gene_enrichment/gene_enrichment_KEGG_annotatted_by_annotar_",list_names[cc],".txt", sep =""), col.names = TRUE, row.names = FALSE, sep = "\t", quote = FALSE)
+    write.table(kegg_results_annoar_df, paste("Dropbox/cancer_reserach/sarcoma/sarcoma_analysis/methylation/analysis_for_grant_Sep24/DSS-downstream/gene_enrichment/gene_enrichment_KEGG_annotatted_by_annotar_PromoterRegions_",list_names[cc],".txt", sep =""), col.names = TRUE, row.names = FALSE, sep = "\t", quote = FALSE)
     
     ### plot the results 
-    pdf(file = paste("Dropbox/cancer_reserach/sarcoma/sarcoma_analysis/methylation/analysis_for_grant_Sep24/DSS-downstream/gene_enrichment/dot_plot_gene_enrichment_KEGG_annotatted_by_annotar_",list_names[cc],".pdf", sep =""))
+    pdf(file = paste("Dropbox/cancer_reserach/sarcoma/sarcoma_analysis/methylation/analysis_for_grant_Sep24/DSS-downstream/gene_enrichment/dot_plot_gene_enrichment_KEGG_annotatted_by_annotar_PromoterRegions_",list_names[cc],".pdf", sep =""))
     dot_kegg_annotar<-dotplot(kegg_results_annoar, showCategory=30,font.size = 8)
     print(dot_kegg_annotar)
     dev.off()
