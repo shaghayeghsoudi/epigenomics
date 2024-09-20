@@ -13,6 +13,8 @@ library(TxDb.Hsapiens.UCSC.hg19.knownGene)  # TxDb for the human genome hg19
 library(org.Hs.eg.db)  # Annotation database for human genes
 library(clusterProfiler)
 library(enrichplot)
+library(annotatr)
+library(dbplyr)
 
 
 dmrs<-read.table(file = "~/Dropbox/cancer_reserach/sarcoma/sarcoma_analysis/methylation/analysis_for_grant_Sep24/DSS-downstream/DSS-downstreamDifferential_methylation_Regions_T1_T2.txt", header = TRUE)
@@ -37,17 +39,25 @@ dmr_granges <- GRanges(
 
 ################# plot the results #################
 ## Create a simple density plot or frequency plot ##
-pdf(file = "Dropbox/cancer_reserach/sarcoma/sarcoma_analysis/methylation/analysis_for_grant_Sep24/DSS-downstream/simple_histogram_diff_methylation_T1T2_DMRs_DSS.pdf")
+pdf(file = "~/Dropbox/cancer_reserach/sarcoma/sarcoma_analysis/methylation/analysis_for_grant_Sep24/DSS-downstream/simple_histogram_diff_methylation_T1T2_DMRs_DSS.pdf")
 volcano_plot_no_pvalue <- ggplot(dmrs, aes(x = diff.Methy)) +
-  geom_histogram(binwidth = 0.05, fill = "blue", alpha = 0.7) +  # Histogram of methylation differences
+  geom_histogram(binwidth = 0.1, fill = "blue", alpha = 0.7, colour= "black") +  # Histogram of methylation differences
   theme_minimal() +  # Clean theme
   labs(
     title = "Distribution of Methylation Differences (DMRs)",
     x = "Methylation Difference (diff.Methy)",
     y = "Count"
   ) +
-  geom_vline(xintercept = c(-0.25, 0.25), col = "red", linetype = "dashed")  # Optional threshold for effect size
+  geom_vline(xintercept = c(-0.2, 0.2), col = "red", linetype = "dashed") +
+  theme_bw() +
+  theme(panel.border = element_blank(), 
+  panel.grid.major = element_blank(),
+  panel.grid.minor = element_blank(), 
+  axis.line = element_line(colour = "black"),
+  text=element_text(size=20),
+  plot.margin = unit(c(1,1,1,1), "cm")) # Optional threshold for effect size
 print(volcano_plot_no_pvalue)
+dev.off()
 
 
 
@@ -77,33 +87,26 @@ dev.off()
 
 
 
-#Annotate the GRanges Object
+#Annotate the GRanges Object and plotting
 # Build annotations for human (e.g., hg19 genome)
 ## CpG islands only
-#annotations_cpg <- build_annotations(genome = 'hg19', annotations = c('hg19_cpg_islands', 'hg19_cpg_shores','hg19_cpg_shelves','hg19_cpg_inter'))
 
-## all conding and non-coding 
-#annotations_all <- build_annotations(genome = 'hg19', 
-#                                 annotations = c('hg19_cpg_islands',
-#                                                 'hg19_cpg_shores',
-#                                                 'hg19_cpg_shelves',
-#                                                 'hg19_cpg_inter', # Open Sea
-#                                                 'hg19_basicgenes', # Gene annotations
-#                                                 'hg19_genes_intergenic', # Intergenic regions
-#                                                 'hg19_genes_intronexonboundaries', # Exon-intron boundaries
-#                                                  'hg19_enhancers_fantom', # FANTOM5 Enhancers
-#                                                 'hg19_genes_promoters', # Promoters
-#                                                 'hg19_genes_5UTRs', # 5' UTR regions
-#                                                 'hg19_genes_3UTRs'  # 3' UTR regions
-#                                                 ))
+annotations1 <- build_annotations(genome = 'hg19', annotations = c(
+    'hg19_basicgenes',  # Gene annotations
+    'hg19_cpgs'       # CpG islands, shores, shelves
+    #'hg19_genes_intersecting', # Genes overlapping with the DMRs
+    #'hg19_ensGene'      # Ensembl genes
+))
 
 
-# only to promoters
-#annotations_promotes <- build_annotations(genome = 'hg19', annotations = "hg19_genes_promoters")
-
+hg19_cpg_islands
+hg19_cpg_shores
+hg19_cpg_shelves
+hg19_cpg_inter
+hg19_cpgs
 
 # Annotate the GRanges DMR object
-#dmr_annotated_promoters <- annotate_regions(regions = dmr_granges, annotations = annotations_promotes , ignore.strand = TRUE)
+dmr_annotated<- annotate_regions(regions = dmr_granges, annotations = annotations_promotes , ignore.strand = TRUE)
 
 #write.table((data.frame(dmr_annotated_promoters)), file = "Dropbox/cancer_reserach/sarcoma/sarcoma_analysis/methylation/analysis_for_grant_Sep24/DSS-downstream/annotate_promoters_DMRs_DSS_T1T2.table",col.names= TRUE, row.names = FALSE, sep = "\t", quote = FALSE) 
 
