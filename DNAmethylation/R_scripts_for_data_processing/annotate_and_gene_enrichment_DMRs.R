@@ -17,8 +17,14 @@ library(annotatr)
 library(dbplyr)
 
 
-dmrs<-read.table(file = "~/Dropbox/cancer_reserach/sarcoma/sarcoma_analysis/methylation/analysis_for_grant_Sep24/DSS-downstream/DSS-downstreamDifferential_methylation_Regions_T1_T2.txt", header = TRUE)
+dmls<-read.table(file = "~/Dropbox/cancer_reserach/sarcoma/sarcoma_analysis/methylation/analysis_for_grant_Sep24/DSS-downstream/DSS-downstreamDifferential_methylation_CpG_T1_T2.txt", header = TRUE)
+dmls$chr<-paste("chr",dmls$chr, sep = "")
+
+dmrs<-read.table(file = "~/Dropbox/cancer_reserach/sarcoma/sarcoma_analysis/methylation/analysis_for_grant_Sep24/DSS-downstream/DSS-downstream/NT1/DSS-downstreamDifferential_methylation_CpG_N_T1.txt", header = TRUE)
+
+
 dmrs$chr <-paste("chr",dmrs$chr, sep = "")
+dmrs<-dmrs[dmrs$fdr<= 0.05,]
 
 ## convert DMR file into Granges
 dmr_granges <- GRanges(
@@ -36,17 +42,30 @@ dmr_granges <- GRanges(
 )
 
 
+#### DMLs
+dml_granges_DMLs <- GRanges(
+    seqnames = dmls$chr,
+    ranges = IRanges(start = dmls$pos, end = dmls$pos),
+    strand = "*",  # Assume no strand information for DMRs
+    #length = dmrs$length,  # Methylation difference
+    #nCG = dmrs$nCG ,
+    meanMethy1 = dmls$mu1,
+    meanMethy2 = dmls$mu2,
+    diff.Methy = dmls$diff
+
+    # p-value
+)
 
 ################# plot the results #################
 ## Create a simple density plot or frequency plot ##
 pdf(file = "~/Dropbox/cancer_reserach/sarcoma/sarcoma_analysis/methylation/analysis_for_grant_Sep24/DSS-downstream/simple_histogram_diff_methylation_T1T2_DMRs_DSS.pdf")
-volcano_plot_no_pvalue <- ggplot(dmrs, aes(x = diff.Methy)) +
+volcano_plot_no_pvalue <- ggplot(dmls, aes(x = diff)) +
   geom_histogram(binwidth = 0.1, fill = "blue", alpha = 0.7, colour= "black") +  # Histogram of methylation differences
   theme_minimal() +  # Clean theme
   labs(
-    title = "Distribution of Methylation Differences (DMRs)",
-    x = "Methylation Difference (diff.Methy)",
-    y = "Count"
+    title = "Distribution of Methylation Differences (DMLs)",   ####### change these
+    x = "Methylation Difference (T1-T2)",
+    y = "Frequency"
   ) +
   geom_vline(xintercept = c(-0.2, 0.2), col = "red", linetype = "dashed") +
   theme_bw() +
@@ -62,13 +81,13 @@ dev.off()
 
 
 # Create a density plot (alternative to histogram)
-pdf(file = "Dropbox/cancer_reserach/sarcoma/sarcoma_analysis/methylation/analysis_for_grant_Sep24/DSS-downstream/densityplot_diff_methylation_T1T2_DMRs_DSS.pdf")
-volcano_plot_density <- ggplot(dmrs, aes(x = diff.Methy)) +
+pdf(file = "~/Dropbox/cancer_reserach/sarcoma/sarcoma_analysis/methylation/analysis_for_grant_Sep24/DSS-downstream/densityplot_diff_methylation_T1T2_DMLs_DSS.pdf")
+volcano_plot_density <- ggplot(dmls, aes(x = diff)) +
   geom_density(fill = "blue", alpha = 0.5) +  # Density plot of methylation differences
   theme_minimal() +
   labs(
-    title = "Density Plot of Methylation Differences (DMRs)",
-    x = "Methylation Difference (diff.Methy)",
+    #title = "Distribution of Methylation Differences (DMLs)",
+    x = "Methylation Difference (T1-T2)",
     y = "Density"
   ) +
   geom_vline(xintercept = c(-0.2, 0.2), 
@@ -91,24 +110,108 @@ dev.off()
 # Build annotations for human (e.g., hg19 genome)
 ## CpG islands only
 
-annotations1 <- build_annotations(genome = 'hg19', annotations = c(
-    'hg19_basicgenes',  # Gene annotations
-    'hg19_cpgs'       # CpG islands, shores, shelves
+annotations_genic <- build_annotations(genome = 'hg19', annotations = c(
+    'hg19_basicgenes'  # Gene annotations
+    #'hg19_cpgs'       # CpG islands, shores, shelves
     #'hg19_genes_intersecting', # Genes overlapping with the DMRs
     #'hg19_ensGene'      # Ensembl genes
 ))
 
 
-hg19_cpg_islands
-hg19_cpg_shores
-hg19_cpg_shelves
-hg19_cpg_inter
-hg19_cpgs
+
+annotations_cpg <- build_annotations(genome = 'hg19', annotations = c(
+    'hg19_cpgs' ))     # CpG islands, shores, shelves
+
+
 
 # Annotate the GRanges DMR object
-dmr_annotated<- annotate_regions(regions = dmr_granges, annotations = annotations_promotes , ignore.strand = TRUE)
+#dmr_annotated<- annotate_regions(regions =dml_granges_DMLs, annotations = annotations_cpg  , ignore.strand = TRUE)
+#dmr_annotated_df<-as.data.frame(dmr_annotated)
+#dmr_annotated_df$annot.type[dmr_annotated_df$annot.type=="hg19_cpg_inter"]<-"Open Sea"
 
-#write.table((data.frame(dmr_annotated_promoters)), file = "Dropbox/cancer_reserach/sarcoma/sarcoma_analysis/methylation/analysis_for_grant_Sep24/DSS-downstream/annotate_promoters_DMRs_DSS_T1T2.table",col.names= TRUE, row.names = FALSE, sep = "\t", quote = FALSE) 
+
+dmr_annotated<- annotate_regions(regions =dml_granges_DMLs, annotations =annotations_genic   , ignore.strand = TRUE)
+dmr_annotated_df<-as.data.frame(dmr_annotated)
+
+
+write.table((data.frame(dmr_annotated_df)), file = "~/Dropbox/cancer_reserach/sarcoma/sarcoma_analysis/methylation/analysis_for_grant_Sep24/DSS-downstream/annotated_genic_DSS_DMLs_T1T2.table",col.names= TRUE, row.names = FALSE, sep = "\t", quote = FALSE) 
+
+#island<-c("hg19_cpg_islands","hg19_cpg_shores","hg19_cpg_shelves","hg19_cpg_inter")
+#dmr_annotated_df_islands<-dmr_annotated_df[dmr_annotated_df$annot.type %in%island, ]
+
+dmr_annotated_df$type <-ifelse(dmr_annotated_df$diff.Methy > 0 , "hypo",
+                                ifelse(dmr_annotated_df$diff.Methy < 0 , "hyper",
+                                  "NA"))
+
+dmr_annotated_df$type_annote<-paste(dmr_annotated_df$annot.type, dmr_annotated_df$type, sep ="_")                                  
+#dmr_annotated_df_islands$id<-paste()
+
+counts<-data.frame("combination"=table(dmr_annotated_df$type_annote))
+counts$location <- str_extract(counts$combination.Var1, ".*(?=_[^_]*$)")   
+counts$location<-gsub("hg19_","", counts$location)
+counts$type <- sub(".*_", "", counts$combination.Var1)
+colnames(counts)<-c("combination.Var1", "number_of_DMRs" ,   "genomic_region" , "type")
+
+counts$genomic_region<-gsub("genes_","",counts$genomic_region)
+
+
+pdf(file = "~/Dropbox/cancer_reserach/sarcoma/sarcoma_analysis/methylation/analysis_for_grant_Sep24/DSS-downstream/barplot_genic_hyper_hypo_annotated_T1T2_DMLs_DSS.pdf")
+plotA<-ggplot(counts, aes(fill=type, y=number_of_DMRs, x=genomic_region)) + 
+    geom_bar(stat="identity", colour= "black") +
+    scale_fill_brewer(palette = "Dark2") +
+    labs(y = "Number of DMLs") +
+    ggtitle("#of hypo- hyper methylated DMRs T1-T2") +
+    theme_bw() +
+    theme(panel.border = element_blank(), 
+    axis.text.y = element_text(angle = 90),
+    legend.title = element_blank(),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(), 
+    axis.line = element_line(colour = "black"),
+    text=element_text(size=16),
+    plot.margin = unit(c(1,1,1,1), "cm"))
+print(plotA)
+dev.off()    
+
+
+####### boxplot of 
+
+#types<-unique(dmr_annotated_df_islands$annot.type)
+
+#outres<-NULL
+#for (ii in 1:length(types)){
+#
+#  dmr_type<-dmr_annotated_df_islands[dmr_annotated_df_islands$annot.type == types[ii],]
+#  group1<-dmr_type[,c("seqnames","start","meanMethy1","annot.symbol", "annot.type" , "type" , "type_annote")]
+#  group1$groupID<-rep("group1")
+#  colnames(group1)[3]<-"meanMethy"
+#
+#  group2<-dmr_type[,c("seqnames","start","meanMethy2","annot.symbol"    ,   "annot.type" , "type"  , "type_annote")]
+#  group2$groupID<-rep("group2")
+#  colnames(group2)[3]<-"meanMethy"
+#
+#  both<-rbind(group1, group2)
+#
+##
+#outres<-rbind(both,outres)
+#}
+
+
+#ggplot(outres, aes(x = annot.type, y = meanMethy, fill = type)) +  
+#geom_boxplot() +
+#scale_fill_brewer(palette = "Dark2") 
+#labs(y = "Number of DMRs") +
+#    ggtitle("#of hypo- hyper methylated DMRs T1 vs T2") +
+#    theme_bw() +
+#    theme(panel.border = element_blank(), 
+#    axis.text.y = element_text(angle = 90),
+#    legend.title = element_blank(),
+#    panel.grid.major = element_blank(),
+#    panel.grid.minor = element_blank(), 
+#    axis.line = element_line(colour = "black"),
+#    text=element_text(size=20),
+#    plot.margin = unit(c(1,1,1,1), "cm"))
+
 
 ################
 ################
