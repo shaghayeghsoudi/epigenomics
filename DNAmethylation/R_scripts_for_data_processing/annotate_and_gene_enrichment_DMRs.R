@@ -17,12 +17,12 @@ library(annotatr)
 library(dbplyr)
 
 
-dmls<-read.table(file = "~/Dropbox/cancer_reserach/sarcoma/sarcoma_analysis/methylation/analysis_for_grant_Sep24/DSS-downstream/DSS-downstreamDifferential_methylation_CpG_T1_T2.txt", header = TRUE)
+dmls<-read.table(file = "~/Dropbox/cancer_reserach/sarcoma/sarcoma_analysis/methylation/analysis_for_grant_Sep24/DSS-downstream/NT1/DSS-downstreamDifferential_methylation_CpG_N_T1.txt", header = TRUE)
 dmls$chr<-paste("chr",dmls$chr, sep = "")
+dmls<-dmls[dmls$fdr<= 0.05,]
+
 
 dmrs<-read.table(file = "~/Dropbox/cancer_reserach/sarcoma/sarcoma_analysis/methylation/analysis_for_grant_Sep24/DSS-downstream/DSS-downstream/NT1/DSS-downstreamDifferential_methylation_CpG_N_T1.txt", header = TRUE)
-
-
 dmrs$chr <-paste("chr",dmrs$chr, sep = "")
 dmrs<-dmrs[dmrs$fdr<= 0.05,]
 
@@ -58,13 +58,13 @@ dml_granges_DMLs <- GRanges(
 
 ################# plot the results #################
 ## Create a simple density plot or frequency plot ##
-pdf(file = "~/Dropbox/cancer_reserach/sarcoma/sarcoma_analysis/methylation/analysis_for_grant_Sep24/DSS-downstream/simple_histogram_diff_methylation_T1T2_DMRs_DSS.pdf")
+pdf(file = "~/Dropbox/cancer_reserach/sarcoma/sarcoma_analysis/methylation/analysis_for_grant_Sep24/DSS-downstream/simple_histogram_diff_methylation_N_T1_DMLs_DSS.pdf")
 volcano_plot_no_pvalue <- ggplot(dmls, aes(x = diff)) +
   geom_histogram(binwidth = 0.1, fill = "blue", alpha = 0.7, colour= "black") +  # Histogram of methylation differences
   theme_minimal() +  # Clean theme
   labs(
     title = "Distribution of Methylation Differences (DMLs)",   ####### change these
-    x = "Methylation Difference (T1-T2)",
+    x = "Methylation Difference (N-T1)",
     y = "Frequency"
   ) +
   geom_vline(xintercept = c(-0.2, 0.2), col = "red", linetype = "dashed") +
@@ -81,7 +81,7 @@ dev.off()
 
 
 # Create a density plot (alternative to histogram)
-pdf(file = "~/Dropbox/cancer_reserach/sarcoma/sarcoma_analysis/methylation/analysis_for_grant_Sep24/DSS-downstream/densityplot_diff_methylation_T1T2_DMLs_DSS.pdf")
+pdf(file = "~/Dropbox/cancer_reserach/sarcoma/sarcoma_analysis/methylation/analysis_for_grant_Sep24/DSS-downstream/densityplot_diff_methylation_N_T1_DMLs_DSS.pdf")
 volcano_plot_density <- ggplot(dmls, aes(x = diff)) +
   geom_density(fill = "blue", alpha = 0.5) +  # Density plot of methylation differences
   theme_minimal() +
@@ -130,11 +130,11 @@ annotations_cpg <- build_annotations(genome = 'hg19', annotations = c(
 #dmr_annotated_df$annot.type[dmr_annotated_df$annot.type=="hg19_cpg_inter"]<-"Open Sea"
 
 
-dmr_annotated<- annotate_regions(regions =dml_granges_DMLs, annotations =annotations_genic   , ignore.strand = TRUE)
+dmr_annotated<- annotate_regions(regions =dml_granges_DMLs, annotations =annotations_cpg   , ignore.strand = TRUE)
 dmr_annotated_df<-as.data.frame(dmr_annotated)
 
 
-write.table((data.frame(dmr_annotated_df)), file = "~/Dropbox/cancer_reserach/sarcoma/sarcoma_analysis/methylation/analysis_for_grant_Sep24/DSS-downstream/annotated_genic_DSS_DMLs_T1T2.table",col.names= TRUE, row.names = FALSE, sep = "\t", quote = FALSE) 
+write.table((data.frame(dmr_annotated_df)), file = "~/Dropbox/cancer_reserach/sarcoma/sarcoma_analysis/methylation/analysis_for_grant_Sep24/DSS-downstream/annotated_CpG_DSS_DMLs_N_T2.table",col.names= TRUE, row.names = FALSE, sep = "\t", quote = FALSE) 
 
 #island<-c("hg19_cpg_islands","hg19_cpg_shores","hg19_cpg_shelves","hg19_cpg_inter")
 #dmr_annotated_df_islands<-dmr_annotated_df[dmr_annotated_df$annot.type %in%island, ]
@@ -152,10 +152,15 @@ counts$location<-gsub("hg19_","", counts$location)
 counts$type <- sub(".*_", "", counts$combination.Var1)
 colnames(counts)<-c("combination.Var1", "number_of_DMRs" ,   "genomic_region" , "type")
 
+
+
 counts$genomic_region<-gsub("genes_","",counts$genomic_region)
+counts$genomic_region<-gsub("cpg_","",counts$genomic_region)
+counts$genomic_region<-gsub("inter","Open Sea",counts$genomic_region)
 
 
-pdf(file = "~/Dropbox/cancer_reserach/sarcoma/sarcoma_analysis/methylation/analysis_for_grant_Sep24/DSS-downstream/barplot_genic_hyper_hypo_annotated_T1T2_DMLs_DSS.pdf")
+
+pdf(file = "~/Dropbox/cancer_reserach/sarcoma/sarcoma_analysis/methylation/analysis_for_grant_Sep24/DSS-downstream/barplot_genic_hyper_hypo_annotated_N_T1_DMLs_DSS.pdf")
 plotA<-ggplot(counts, aes(fill=type, y=number_of_DMRs, x=genomic_region)) + 
     geom_bar(stat="identity", colour= "black") +
     scale_fill_brewer(palette = "Dark2") +
