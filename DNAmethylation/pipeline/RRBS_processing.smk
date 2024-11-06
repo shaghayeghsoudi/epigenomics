@@ -59,42 +59,6 @@ rule trim_galore:
 
 rule bismark_rrbs_alignment:
     input:
-        fastq1="trimmed_data/{sample}_R1_val_1.fq.gz",
-        fastq2="trimmed_data/{sample}_R2_val_2.fq.gz"
-    output:
-        bam="aligned_data/{sample}_bismark_bt2.bam",
-        report="aligned_data/{sample}_R1_val_1_bismark_bt2_PE_report.txt",
-        unmapped="aligned_data/{sample}_unmapped_reads.fq.gz"
-    params:
-        genome_dir="path/to/bismark_genome",  # Path to the Bismark-prepared genome directory
-        extra="--rrbs --bowtie2 --unmapped"  # RRBS-specific, Bowtie2, and keep unmapped options
-    log:
-        "logs/bismark/{sample}_alignment.log"
-    threads: 8  # Adjust based on computational resources
-    shell:
-        """
-        bismark {params.genome_dir} -1 {input.fastq1} -2 {input.fastq2} \
-        {params.extra} -p {threads} -o aligned_data > {log} 2>&1
-        """
-
-### rule
-# Fo *.fa.gz file:
-rule bismark_genome_preparation_fa_gz:
-    input:
-        "indexes/{genome}/{genome}.fa.gz"
-    output:
-        directory("indexes/{genome}/Bisulfite_Genome")
-    log:
-        "logs/indexes/{genome}/Bisulfite_Genome.log"
-    params:
-        extra=""  # optional params string
-    wrapper:
-        "v2.6.0/bio/bismark/bismark_genome_preparation"
-
-### rule
-# Example: Pair-ended reads
-rule bismark_pe:
-    input:
         fq_1="reads/{sample}.1.fastq",
         fq_2="reads/{sample}.2.fastq",
         genome="indexes/{genome}/{genome}.fa",
@@ -108,9 +72,10 @@ rule bismark_pe:
         bam_unmapped_2="bams/{sample}_{genome}_unmapped_reads_2.fq.gz",
         ambiguous_1="bams/{sample}_{genome}_ambiguous_reads_1.fq.gz",
         ambiguous_2="bams/{sample}_{genome}_ambiguous_reads_2.fq.gz"
-    log:
-        "logs/bams/{sample}_{genome}.log"
     params:
+        genome_dir="path/to/bismark_genome",  # Path to the Bismark-prepared genome directory
+        extra="--rrbs --bowtie2 --unmapped"  # RRBS-specific, Bowtie2, and keep unmapped options
+        params:
         # optional params string, e.g: -L32 -N0 -X400 --gzip
         # Useful options to tune:
         # (for bowtie2)
@@ -128,83 +93,34 @@ rule bismark_pe:
         # --temp_dir: tmp dir for intermediate files instead of output directory
         extra=' --ambiguous --unmapped --nucleotide_coverage',
         basename='{sample}_{genome}'
-    wrapper:
-        "v2.6.0/bio/bismark/bismark"
-
-
-### sort bam file
-rule sort_bam_files:
-
-
-
-
-
-### deduplicate 
-rule deduplicate_BAM_files
-
-
-
-
-### rule
-# Example: Single-ended reads
-rule bismark_se:
-    input:
-        fq="reads/{sample}.fq.gz",
-        genome="indexes/{genome}/{genome}.fa",
-        bismark_indexes_dir="indexes/{genome}/Bisulfite_Genome",
-        genomic_freq="indexes/{genome}/genomic_nucleotide_frequencies.txt"
-    output:
-        bam="bams/{sample}_{genome}.bam",
-        report="bams/{sample}_{genome}_SE_report.txt",
-        nucleotide_stats="bams/{sample}_{genome}.nucleotide_stats.txt",
-        bam_unmapped="bams/{sample}_{genome}_unmapped_reads.fq.gz",
-        ambiguous="bams/{sample}_{genome}_ambiguous_reads.fq.gz"
     log:
-        "logs/bams/{sample}_{genome}.log",
-    params:
-        # optional params string
-        extra=' --ambiguous --unmapped --nucleotide_coverage',
-        basename='{sample}_{genome}'
-    wrapper:
-        "v2.6.0/bio/bismark/bismark"
+        "logs/bismark/{sample}_alignment.log"
+    threads: 8  # Adjust based on computational resources
+    shell:
+        """
+        bismark {params.genome_dir} -1 {input.fastq1} -2 {input.fastq2} \
+        {params.extra} -p {threads} -o aligned_data > {log} 2>&1
+        """
 
-### rule
-# Example: Pair-ended reads
-rule bismark2report_pe:
+
+rule deduplicate_bam_rrbs:
     input:
-        alignment_report="bams/{sample}_{genome}_PE_report.txt",
-        nucleotide_report="bams/{sample}_{genome}_pe.nucleotide_stats.txt",
-        dedup_report="bams/{sample}_{genome}_pe.deduplication_report.txt",
-        mbias_report="meth/{sample}_{genome}_pe.deduplicated.M-bias.txt",
-        splitting_report="meth/{sample}_{genome}_pe.deduplicated_splitting_report.txt"
+        bam="aligned_data/{sample}_bismark_bt2.bam",
+        bai="aligned_data/{sample}_bismark_bt2.bam.bai"  # BAM index file
     output:
-        html="qc/meth/{sample}_{genome}.bismark2report.html",
-    log:
-        "logs/qc/meth/{sample}_{genome}.bismark2report.html.log",
+        dedup_bam="dedup_data/{sample}_deduplicated.bam",
+        dedup_log="dedup_data/{sample}_deduplication_report.txt"
     params:
-        skip_optional_reports=True
-    wrapper:
-        "v2.6.0/bio/bismark/bismark2report"
-
-# Example: Single-ended reads
-rule bismark2report_se:
-    input:
-        alignment_report="bams/{sample}_{genome}_SE_report.txt",
-        nucleotide_report="bams/{sample}_{genome}.nucleotide_stats.txt",
-        dedup_report="bams/{sample}_{genome}.deduplication_report.txt",
-        mbias_report="meth/{sample}_{genome}.deduplicated.M-bias.txt",
-        splitting_report="meth/{sample}_{genome}.deduplicated_splitting_report.txt"
-    output:
-        html="qc/meth/{sample}_{genome}.bismark2report.html",
+        extra="--rrbs"  # RRBS-specific deduplication option, if applicable
     log:
-        "logs/qc/meth/{sample}_{genome}.bismark2report.html.log",
-    params:
-        skip_optional_reports=True
-    wrapper:
-        "v2.6.0/bio/bismark/bismark2report"
+        "logs/deduplication/{sample}_deduplication.log"
+    shell:
+        """
+        deduplicate_BAM_files {params.extra} --input {input.bam} \
+        --output {output.dedup_bam} > {output.dedup_log} 2> {log}
+        """
 
 
-### rule
 rule bismark_methylation_extractor:
     input: "bams/{sample}.bam"
     output:

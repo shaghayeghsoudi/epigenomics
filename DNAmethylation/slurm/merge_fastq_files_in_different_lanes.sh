@@ -17,7 +17,7 @@
 
 
 # Define the folder containing your fastq.gz files
-FOLDER="/oak/stanford/groups/emoding/analysis/shaghayegh/methylation/NovaSeqX15-22_processing_upstream/test"
+FOLDER="/oak/stanford/groups/emoding/analysis/shaghayegh/methylation/NovaSeqX15-22_processing_upstream"
 
 # Move into the folder
 cd "$FOLDER" || exit 1  # Exit if the folder doesn't exist
