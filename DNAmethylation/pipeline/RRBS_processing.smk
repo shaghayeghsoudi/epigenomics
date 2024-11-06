@@ -37,33 +37,45 @@ rule run_fastQC_raw_fastq
         "v2.6.0/bio/bismark/bismark_genome_preparation"
 
 
-### trimming with Trim_galore
-rule run_Trim_Galore
+rule trim_galore:
     input:
-        "indexes/{genome}/{genome}.fa"
+        "raw_data/{sample}_R1.fastq.gz",
+        "raw_data/{sample}_R2.fastq.gz"
     output:
-        directory("indexes/{genome}/Bisulfite_Genome")
-    log:
-        "logs/indexes/{genome}/Bisulfite_Genome.log"
+        "trimmed_data/{sample}_R1_val_1.fq.gz",
+        "trimmed_data/{sample}_R2_val_2.fq.gz",
+        "trimmed_data/{sample}_trimming_report.txt"
     params:
-        ""  # optional params string
-    wrapper:
-        "v2.6.0/bio/bismark/bismark_genome_preparation"
+        rrbs = "--rrbs",  # Trim Galore parameter for RRBS-specific trimming
+    log:
+        "logs/trim_galore/{sample}_trim.log"
+    shell:
+        """
+        trim_galore {params.rrbs} --paired {params.adapter} \
+        -o trimmed_data \
+        {input[0]} {input[1]} > {log} 2>&1
+        """
 
 
-
-### rule 
-rule bismark_genome_preparation_fa:
+rule bismark_rrbs_alignment:
     input:
-        "indexes/{genome}/{genome}.fa"
+        fastq1="trimmed_data/{sample}_R1_val_1.fq.gz",
+        fastq2="trimmed_data/{sample}_R2_val_2.fq.gz"
     output:
-        directory("indexes/{genome}/Bisulfite_Genome")
-    log:
-        "logs/indexes/{genome}/Bisulfite_Genome.log"
+        bam="aligned_data/{sample}_bismark_bt2.bam",
+        report="aligned_data/{sample}_R1_val_1_bismark_bt2_PE_report.txt",
+        unmapped="aligned_data/{sample}_unmapped_reads.fq.gz"
     params:
-        ""  # optional params string
-    wrapper:
-        "v2.6.0/bio/bismark/bismark_genome_preparation"
+        genome_dir="path/to/bismark_genome",  # Path to the Bismark-prepared genome directory
+        extra="--rrbs --bowtie2 --unmapped"  # RRBS-specific, Bowtie2, and keep unmapped options
+    log:
+        "logs/bismark/{sample}_alignment.log"
+    threads: 8  # Adjust based on computational resources
+    shell:
+        """
+        bismark {params.genome_dir} -1 {input.fastq1} -2 {input.fastq2} \
+        {params.extra} -p {threads} -o aligned_data > {log} 2>&1
+        """
 
 ### rule
 # Fo *.fa.gz file:
