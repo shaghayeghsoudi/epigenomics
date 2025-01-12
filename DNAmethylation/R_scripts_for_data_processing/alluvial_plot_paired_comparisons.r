@@ -8,93 +8,17 @@ library(GenomicRanges)
 library(annotatr)
 library(patchwork)
 
-######################
-#### real DSS data ###
+################################################
+### load DSS output files for paired combinations
 
-files<-list.files(path="~/Dropbox/cancer_reserach/sarcoma/sarcoma_analysis/methylation/full_cohort/DSS_outputs_pairwise_comparisons/DSS_outputs_all_regions_paired_Pvalue1/DSS_outputs_pair_top_CpG_regions", pattern = "^all_methylation_CpG", full.names = TRUE)
-combinations <- list(
-  c("N_T1", "N_T2"),
-  c("N_T1", "N_T3"),
-  c("T1_T2", "T1_T3")
-)
+path<- ("~/Dropbox/cancer_reserach/sarcoma/sarcoma_analysis/methylation/full_cohort/DSS_outputs_pairwise_comparisons/DSS_outputs_pairwise_comparisons_Pvalue1/DSS_outputs_pair_top_CpG_regions/")
+files<-list.files(path="~/Dropbox/cancer_reserach/sarcoma/sarcoma_analysis/methylation/full_cohort/DSS_outputs_pairwise_comparisons/DSS_outputs_pairwise_comparisons_Pvalue1/DSS_outputs_pair_top_CpG_regions", pattern = "^all_methylation_CpG_", full.names = TRUE)
 
-for (cc in 1:length(combinations)){  ### loop through each combination
-
-  patterns<-unlist(combinations[cc])
-  matching_files <- files[grepl(paste(patterns, collapse = "|"), files)]
-  
-  processed_files <- lapply(matching_files, function(file) {
-
-    data <- read.table(file, header = TRUE)
-
-    # Apply the mutations
-    data <- data %>%
-    mutate(id = paste(chr, pos, sep = "_")) %>%
-    mutate(methyl_change = ifelse(fdr <= 0.059 & diff < 0, "hyper",
-                           ifelse(fdr <= 0.059 & diff > 0, "hypo",
-                           ifelse(fdr > 0.059, "no change", "NA")))) %>% 
-    filter(chr %in% ChrNames)
-  
-    # Return the processed data
-    return(data)
-    }) ### 
-
-   P1 <- processed_files[[1]]  # Processed data for the first file
-   P2 <- processed_files[[2]]  # Processed data for the second file
-   
-   shared_values <- intersect(P1[,"id"], P2[, "id"])   
+P1<-read.table(file= paste(path,"all_methylation_CpG_T1_T2.txt", sep = ""), header= TRUE)
+P2<-read.table(file= paste(path,"all_methylation_CpG_T1_T3.txt", sep = ""), header= TRUE)
 
 
-   P1_shared<- P1 %>% 
-    filter(id %in%shared_values) %>% 
-    dplyr::select(chr,pos,mu1,mu2,diff,fdr,id, methyl_change)
-
-  P2_shared<- P2 %>% 
-    filter(id %in%shared_values) %>% 
-    dplyr::select(chr,pos,mu1,mu2,diff,fdr,id, methyl_change)
-
-  both <- P1_shared %>% 
-    full_join(P2_shared, by = "id") %>% 
-    mutate(pair_change = paste(methyl_change.x,methyl_change.y,sep = "_")) %>% 
-    mutate( alluvial= ifelse(pair_change ==  "hypo_hypo", "ConsistHypo",
-                           ifelse(pair_change == "hypo_no change" , "LoseHypo",
-                           ifelse(pair_change == "hypo_hyper" , "Switch",
-                           ifelse(pair_change == "hyper_hyper" , "ConsistHyper",
-                           ifelse(pair_change ==  "hyper_no change", "LoseHyper",
-                           ifelse(pair_change == "hyper_hypo" , "Switch",
-                           ifelse(pair_change ==  "no change_hypo", "GainHypo",
-                           ifelse(pair_change == "no change_hyper" , "GainHyper",
-                           ifelse(pair_change ==  "no change_no change", "NoChange","NA")
-                           )))))))))
-
-
-
-freq_alluvial<-data.frame("freq"=table(both$alluvial))
-freq_alluvial<-freq_alluvial %>% 
-      mutate(status= ifelse(freq.Var1 ==  "ConsistHypo","hypo_hypo",
-                           ifelse(freq.Var1 ==  "LoseHypo","hypo_no change",
-                           ifelse(freq.Var1 =="Switch", "hypo_hyper" , 
-                           ifelse(freq.Var1 == "ConsistHyper","hyper_hyper" , 
-                           ifelse(freq.Var1 == "LoseHyper", "hyper_no change", 
-                           ifelse(freq.Var1 ==  "Switch","hyper_hypo" ,
-                           ifelse(freq.Var1 ==  "GainHypo","no change_hypo", 
-                           ifelse(freq.Var1 == "GainHyper","no change_hyper" , 
-                           ifelse(freq.Var1 ==  "NoChange","no change_no change","NA")
-                           ))))))))) %>% 
-      mutate(primary = gsub("_.*$","",status)) %>% 
-      mutate(relapse = gsub(".*_","",status))                  
-     
-
-  
-
-}  ### cc loop
-
-
-### frm here : ####
-P1<-read.table(file = "~/Dropbox/cancer_reserach/sarcoma/sarcoma_analysis/methylation/full_cohort/DSS_outputs_pairwise_comparisons/DSS_outputs_all_regions_paired_Pvalue1/DSS_outputs_pair_top_CpG_regions/all_methylation_CpG_N_T1.txt", header = TRUE)
-P2<-read.table(file = "~/Dropbox/cancer_reserach/sarcoma/sarcoma_analysis/methylation/full_cohort/DSS_outputs_pairwise_comparisons/DSS_outputs_all_regions_paired_Pvalue1/DSS_outputs_pair_top_CpG_regions/all_methylation_CpG_N_T2.txt", header = TRUE)
-
-ChrNames <- c(1:19,"X","Y")
+ChrNames <- c(1:22,"X","Y")
 
 P1 <- P1 %>% 
     mutate(id= paste(chr,pos,sep = "_")) %>% 
@@ -441,8 +365,8 @@ dev.off()
 
 ### save the output table 
 output_table<-rbind(freq_alluvial,freq_alluvial_island,freq_alluvial_shore,freq_alluvial_shelve)
-output_table$pair<-rep("primary_relapse")
-write.table(output_table, file = "~/Dropbox/cancer_reserach/sarcoma/sarcoma_analysis/methylation/full_cohort/DSS_outputs_pairwise_comparisons/DSS_outputs_all_regions_paired_Pvalue1/primary_relapse/output_alluvial_table_top_CpG_regions_annotated_primary_relapse.table", col.names = TRUE, row.names = FALSE, sep = "\t", quote = FALSE)
+output_table$pair<-rep("primary_irradiated")
+write.table(output_table, file = "~/Dropbox/cancer_reserach/sarcoma/sarcoma_analysis/methylation/full_cohort/DSS_outputs_pairwise_comparisons/DSS_outputs_all_regions_paired_Pvalue1/primary_irradiated/output_alluvial_table_top_CpG_regions_annotated_primary_irradiated.table", col.names = TRUE, row.names = FALSE, sep = "\t", quote = FALSE)
 ######################################################################
 ######################################################################
 #### optimized code 
@@ -451,16 +375,16 @@ write.table(output_table, file = "~/Dropbox/cancer_reserach/sarcoma/sarcoma_anal
 
 prepare_data <- function(annot_type, dm_annotated_df, both) {   ### annotation types (shore, shelve, island)
   # Filter data for the specific annotation type
-  dm_annotated <- dm_annotated_df %>%
+    dm_annotated <- dm_annotated_df %>%
     mutate(chr = gsub("chr", "", seqnames), id = paste(chr, start, sep = "_")) %>%
     filter(annot.type == annot_type)
   
-  both_filtered <- both[both$id %in% dm_annotated$id, ]
+    both_filtered <- both[both$id %in% dm_annotated$id, ]
   
-  # Create the frequency table and process data
-  freq_alluvial <- data.frame("freq" = table(both_filtered$alluvial))
-  freq_alluvial <- freq_alluvial %>%
-    mutate(status = ifelse(freq.Var1 == "ConsistHypo", "hypo_hypo",
+   # Create the frequency table and process data
+   freq_alluvial <- data.frame("freq" = table(both_filtered$alluvial))
+   freq_alluvial <- freq_alluvial %>%
+   mutate(status = ifelse(freq.Var1 == "ConsistHypo", "hypo_hypo",
                    ifelse(freq.Var1 == "LoseHypo", "hypo_no change",
                    ifelse(freq.Var1 == "SwitchHypoToHyper", "hypo_hyper",
                    ifelse(freq.Var1 == "ConsistHyper", "hyper_hyper",
@@ -473,9 +397,9 @@ prepare_data <- function(annot_type, dm_annotated_df, both) {   ### annotation t
     mutate(primary = gsub("_.*$", "", status)) %>%
     mutate(relapse = gsub(".*_", "", status))
   
-  colnames(freq_alluvial)[1] <- "Methylation_dynamics"
+   colnames(freq_alluvial)[1] <- "Methylation_dynamics"
   
-  return(freq_alluvial)
+   return(freq_alluvial)
 }
 
 
@@ -553,3 +477,82 @@ print(combined_plot)
 #        legend.text = element_text(size = 8)) +   # Legend text size
 #  labs(title = "Alluvial Plot with ggplot2 and ggalluvial", 
 #       x = "Primary", y = "Frequency", fill = "Status") # Titles and labels
+
+
+
+combinations <- list(
+  c("N_T1", "N_T2"),
+  c("N_T1", "N_T3"),
+  c("T1_T2", "T1_T3")
+)
+
+for (cc in 1:length(combinations)){  ### loop through each combination
+
+  patterns<-unlist(combinations[cc])
+  matching_files <- files[grepl(paste(patterns, collapse = "|"), files)]
+  
+  processed_files <- lapply(matching_files, function(file) {
+
+    data <- read.table(file, header = TRUE)
+
+    # Apply the mutations
+    data <- data %>%
+    mutate(id = paste(chr, pos, sep = "_")) %>%
+    mutate(methyl_change = ifelse(fdr <= 0.059 & diff < 0, "hyper",
+                           ifelse(fdr <= 0.059 & diff > 0, "hypo",
+                           ifelse(fdr > 0.059, "no change", "NA")))) %>% 
+    filter(chr %in% ChrNames)
+  
+    # Return the processed data
+    return(data)
+    }) ### 
+
+   P1 <- processed_files[[1]]  # Processed data for the first file
+   P2 <- processed_files[[2]]  # Processed data for the second file
+   
+   shared_values <- intersect(P1[,"id"], P2[, "id"])   
+
+
+   P1_shared<- P1 %>% 
+    filter(id %in%shared_values) %>% 
+    dplyr::select(chr,pos,mu1,mu2,diff,fdr,id, methyl_change)
+
+  P2_shared<- P2 %>% 
+    filter(id %in%shared_values) %>% 
+    dplyr::select(chr,pos,mu1,mu2,diff,fdr,id, methyl_change)
+
+  both <- P1_shared %>% 
+    full_join(P2_shared, by = "id") %>% 
+    mutate(pair_change = paste(methyl_change.x,methyl_change.y,sep = "_")) %>% 
+    mutate( alluvial= ifelse(pair_change ==  "hypo_hypo", "ConsistHypo",
+                           ifelse(pair_change == "hypo_no change" , "LoseHypo",
+                           ifelse(pair_change == "hypo_hyper" , "Switch",
+                           ifelse(pair_change == "hyper_hyper" , "ConsistHyper",
+                           ifelse(pair_change ==  "hyper_no change", "LoseHyper",
+                           ifelse(pair_change == "hyper_hypo" , "Switch",
+                           ifelse(pair_change ==  "no change_hypo", "GainHypo",
+                           ifelse(pair_change == "no change_hyper" , "GainHyper",
+                           ifelse(pair_change ==  "no change_no change", "NoChange","NA")
+                           )))))))))
+
+
+
+freq_alluvial<-data.frame("freq"=table(both$alluvial))
+freq_alluvial<-freq_alluvial %>% 
+      mutate(status= ifelse(freq.Var1 ==  "ConsistHypo","hypo_hypo",
+                           ifelse(freq.Var1 ==  "LoseHypo","hypo_no change",
+                           ifelse(freq.Var1 =="Switch", "hypo_hyper" , 
+                           ifelse(freq.Var1 == "ConsistHyper","hyper_hyper" , 
+                           ifelse(freq.Var1 == "LoseHyper", "hyper_no change", 
+                           ifelse(freq.Var1 ==  "Switch","hyper_hypo" ,
+                           ifelse(freq.Var1 ==  "GainHypo","no change_hypo", 
+                           ifelse(freq.Var1 == "GainHyper","no change_hyper" , 
+                           ifelse(freq.Var1 ==  "NoChange","no change_no change","NA")
+                           ))))))))) %>% 
+      mutate(primary = gsub("_.*$","",status)) %>% 
+      mutate(relapse = gsub(".*_","",status))                  
+     
+
+  
+
+}  ### cc loop
