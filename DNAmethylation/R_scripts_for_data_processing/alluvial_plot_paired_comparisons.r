@@ -384,7 +384,142 @@ print(combined_plot)
 
 ###############################
 ###############################
+#### optimize the whole code to run it for multiple comparisions
 
+path<- ("~/Dropbox/cancer_reserach/sarcoma/sarcoma_analysis/methylation/full_cohort/DSS_outputs_pairwise_comparisons/DSS_outputs_pairwise_comparisons_Pvalue1/DSS_outputs_pair_top_CpG_regions/test/")
+files<-list.files(path = path, pattern = "^all_methylation_CpG_", full.names = TRUE)
+
+
+# Define chromosomes
+ChrNames <- c(1:22, "X", "Y")
+
+# Define a function to process pairwise comparisons
+process_pairwise <- function(p1_path, p2_path, ChrNames, comparison_name, output_dir) {
+  # Prepare P1 and P2
+
+ # Read P1 and P2 files
+  P1 <- read.table(p1_path, header = TRUE, sep = "\t")
+  P2 <- read.table(p2_path, header = TRUE, sep = "\t")
+
+
+  P1 <- P1 %>%
+    mutate(id = paste(chr, pos, sep = "_")) %>%
+    mutate(methyl_change = ifelse(fdr <= 0.059 & diff < 0, "hyper",
+                           ifelse(fdr <= 0.059 & diff > 0, "hypo",
+                           ifelse(fdr > 0.059, "no change", "NA")))) %>%
+    filter(chr %in% ChrNames)
+
+  P2 <- P2 %>%
+    mutate(id = paste(chr, pos, sep = "_")) %>%
+    mutate(methyl_change = ifelse(fdr <= 0.059 & diff < 0, "hyper",
+                           ifelse(fdr <= 0.059 & diff > 0, "hypo",
+                           ifelse(fdr > 0.059, "no change", "NA")))) %>%
+    filter(chr %in% ChrNames)
+
+  # Find shared values
+  shared_values <- intersect(P1$id, P2$id)
+
+  P1_shared <- P1 %>%
+    filter(id %in% shared_values) %>%
+    dplyr::select(chr, pos, mu1, mu2, diff, fdr, id, methyl_change)
+
+  P2_shared <- P2 %>%
+    filter(id %in% shared_values) %>%
+    dplyr::select(chr, pos, mu1, mu2, diff, fdr, id, methyl_change)
+
+  # Combine shared values
+  both <- P1_shared %>%
+    full_join(P2_shared, by = "id") %>%
+    mutate(pair_change = paste(methyl_change.x, methyl_change.y, sep = "_")) %>%
+    mutate(alluvial = ifelse(pair_change == "hypo_hypo", "ConsistHypo",
+                      ifelse(pair_change == "hypo_no change", "LoseHypo",
+                      ifelse(pair_change == "hypo_hyper", "SwitchHypoToHyper",
+                      ifelse(pair_change == "hyper_hyper", "ConsistHyper",
+                      ifelse(pair_change == "hyper_no change", "LoseHyper",
+                      ifelse(pair_change == "hyper_hypo", "SwitchHyperToHypo",
+                      ifelse(pair_change == "no change_hypo", "GainHypo",
+                      ifelse(pair_change == "no change_hyper", "GainHyper",
+                      ifelse(pair_change == "no change_no change", "NoChange", "NA")
+                      )))))))))
+
+  # Frequency table
+  freq_alluvial <- as.data.frame(table(both$alluvial))
+  colnames(freq_alluvial) <- c("Methylation_dynamics", "freq")
+  freq_alluvial <- freq_alluvial %>%
+    mutate(status = case_when(
+      Methylation_dynamics == "ConsistHypo" ~ "hypo_hypo",
+      Methylation_dynamics == "LoseHypo" ~ "hypo_no change",
+      Methylation_dynamics == "SwitchHypoToHyper" ~ "hypo_hyper",
+      Methylation_dynamics == "ConsistHyper" ~ "hyper_hyper",
+      Methylation_dynamics == "LoseHyper" ~ "hyper_no change",
+      Methylation_dynamics == "SwitchHyperToHypo" ~ "hyper_hypo",
+      Methylation_dynamics == "GainHypo" ~ "no change_hypo",
+      Methylation_dynamics == "GainHyper" ~ "no change_hyper",
+      Methylation_dynamics == "NoChange" ~ "no change_no change",
+      TRUE ~ "NA"
+    )) %>%
+    mutate(primary = gsub("_.*$", "", status),
+           relapse = gsub(".*_", "", status),
+           genomic_location = "all")
+
+  # Create Alluvial Plot
+  colors <- c(
+    "ConsistHyper" = "indianred4",
+    "ConsistHypo" = "blue4",
+    "GainHyper" = "seagreen4",
+    "GainHypo" = "seagreen1",
+    "LoseHyper" = "indianred1",
+    "LoseHypo" = "blue",
+    "NoChange" = "olivedrab",
+    "SwitchHyperToHypo" = "orangered",
+    "SwitchHypoToHyper" = "cornflowerblue"
+  )
+
+  alluvial_plot <- ggplot(freq_alluvial, aes(axis1 = primary, axis2 = relapse, y = freq)) +
+    geom_alluvium(aes(fill = Methylation_dynamics), width = 4 / 12) +
+    geom_stratum(width = 5 / 12, fill = "grey") +
+    geom_text(stat = "stratum", aes(label = after_stat(stratum))) +
+    scale_x_discrete(limits = c("Primary", "Relapse")) +
+    scale_fill_manual(values = colors) +
+    labs(title = paste("Alluvial Plot:", comparison_name), y = "Frequency") +
+    theme_minimal() +
+    theme(panel.grid.major = element_blank(),
+          panel.grid.minor = element_blank(),
+          panel.background = element_blank(),
+          axis.line = element_line(colour = "black"),
+          axis.text = element_text(size = 17),
+          axis.title = element_text(size = 19))
+
+  # Save plot and table
+  pdf(file = file.path(output_dir, paste0("alluvial_", comparison_name, ".pdf")), height = 8, width = 8)
+  print(alluvial_plot)
+  dev.off()
+
+  write.table(freq_alluvial, file = file.path(output_dir, paste0("freq_table_", comparison_name, ".txt")),
+              col.names = TRUE, row.names = FALSE, sep = "\t", quote = FALSE)
+}
+
+# Run pairwise comparisons
+output_dir <- "~/path/to/output"
+comparisons <- list(
+  list(p1_path = paste(path,"all_methylation_CpG_N_T1.txt", sep = ""), p2_path = "all_methylation_CpG_N_T2.txt", name = "NT1_vs_NT2"),
+  list(p1_path = paste(path,"all_methylation_CpG_N_T2.txt", sep = ""), p2_path = "all_methylation_CpG_N_T3.txt", name = "NT1_vs_NT3"),
+  list(p1_path = paste(path,"all_methylation_CpG_T1_T2.txt", sep = ""), p2_path = "all_methylation_CpG_T1_T23.txt", name = "T1T2_vs_T1T3"),
+
+)
+
+lapply(comparisons, function(comp) {
+  process_pairwise(comp$p1_path, comp$p2_path, ChrNames, comp$name, output_dir)
+})
+
+
+
+lapply(comparisons, function(comp) {
+  process_pairwise(comp$p1_path, comp$p2_path, ChrNames, comp$name, output_dir)
+})
+
+##############
+#### Loop option
 combinations <- list(
   c("N_T1", "N_T2"),
   c("N_T1", "N_T3"),
