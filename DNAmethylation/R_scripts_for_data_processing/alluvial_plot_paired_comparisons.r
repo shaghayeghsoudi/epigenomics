@@ -11,8 +11,8 @@ library(patchwork)
 ################################################
 ### load DSS output files for paired combinations
 
-path<- ("~/Dropbox/cancer_reserach/sarcoma/sarcoma_analysis/methylation/full_cohort/DSS_outputs_pairwise_comparisons/DSS_outputs_pairwise_comparisons_Pvalue1/DSS_outputs_pair_top_CpG_regions/")
-files<-list.files(path="~/Dropbox/cancer_reserach/sarcoma/sarcoma_analysis/methylation/full_cohort/DSS_outputs_pairwise_comparisons/DSS_outputs_pairwise_comparisons_Pvalue1/DSS_outputs_pair_top_CpG_regions", pattern = "^all_methylation_CpG_", full.names = TRUE)
+#path<- ("~/Dropbox/cancer_reserach/sarcoma/sarcoma_analysis/methylation/full_cohort/DSS_outputs_pairwise_comparisons/DSS_outputs_pairwise_comparisons_Pvalue1/DSS_outputs_pair_comparison_merged_regions/")
+files<-list.files(path="~/Dropbox/cancer_reserach/sarcoma/sarcoma_analysis/methylation/full_cohort/DSS_outputs_pairwise_comparisons/DSS_outputs_pairwise_comparisons_Pvalue1/DSS_outputs_pair_comparison_merged_regions", pattern = "^all_methylation_CpG_", full.names = TRUE)
 
 P1<-read.table(file= paste(path,"all_methylation_CpG_T1_T2.txt", sep = ""), header= TRUE)
 P2<-read.table(file= paste(path,"all_methylation_CpG_T1_T3.txt", sep = ""), header= TRUE)
