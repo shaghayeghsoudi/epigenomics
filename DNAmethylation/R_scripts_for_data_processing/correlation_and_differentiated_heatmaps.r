@@ -6,6 +6,7 @@ library(tidyr)
 library(stringr)
 library(reshape2) # For data reshaping
 library(pheatmap) # For heatmap visualization
+library(ComplexHeatmap)
 #library(gdata)
 #library(kableExtra)
 #library(parallel)
@@ -171,13 +172,9 @@ results <- mapply(
 )
 
 
-##################################
-##### simple worked example #####
-# Assume `diff_cpgs` is a data frame containing:
-# - CpG IDs in rows
-# - Beta values for each sample in columns
+#######################################################################
+##### simple worked example for heatmap of top differentied CpGs  #####
 
-# Example: Simulated data for demonstration
 set.seed(42)
 diff_cpgs <- data.frame(
   CpG1 = runif(10, 0, 1),
@@ -188,15 +185,15 @@ diff_cpgs <- data.frame(
 )
 rownames(diff_cpgs) <- paste0("Sample", 1:10)
 
-> diff_cpgs
-              CpG1      CpG2       CpG3        CpG4       CpG5
-Sample1  0.9148060 0.4577418 0.90403139 0.737595618 0.37955924
-Sample2  0.9370754 0.7191123 0.13871017 0.811055141 0.43577158
-Sample3  0.2861395 0.9346722 0.98889173 0.388108283 0.03743103
+#> diff_cpgs ### example input for heatmap 
+#              CpG1      CpG2       CpG3        CpG4       CpG5
+#Sample1  0.9148060 0.4577418 0.90403139 0.737595618 0.37955924
+#Sample2  0.9370754 0.7191123 0.13871017 0.811055141 0.43577158
+#Sample3  0.2861395 0.9346722 0.98889173 0.388108283 0.03743103
 
-# Normalize the data (optional, for better contrast)
-diff_cpgs_scaled <- scale(diff_cpgs)
 
+diff_cpgs_scaled <- scale(diff_cpgs)   # Normalize the data (optional, for better contrast)
+ 
 # Create the heatmap
 pheatmap(
   diff_cpgs_scaled,
@@ -209,7 +206,7 @@ pheatmap(
 )
 
 
-library(ComplexHeatmap)
+
 
 # Create a heatmap with annotations
 Heatmap(

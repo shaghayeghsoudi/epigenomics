@@ -1,3 +1,5 @@
+#!/usr/bin/env Rscript
+
 #### process coverage files for DNA methylation percentage
 # Load the libraries
 library(annotatr)
@@ -76,51 +78,119 @@ for (ii in 1:length(samples)){
 
 }
 
-write.table(out_res, file = paste(output_dir, "mean_methylation_percentage_per_top_CpG_region.txt", sep = ""), col.names = TRUE, row.names = FALSE,sep = "\t", quote = FALSE)
+write.table(out_res, file = paste(output_dir, "mean_methylation_percentage_per_top_CpG_specimen.txt", sep = ""), col.names = TRUE, row.names = FALSE,sep = "\t", quote = FALSE)
 
-# Plot
-box_all_plot<-out_res %>%
-  ggplot( aes(x=Sample_Type, y=mean_percentage, fill=Sample_Type)) +
-  geom_boxplot(outlier.shape = NA) +
-  geom_jitter() +  #### dots
-  labs(title = "box plot of mean methylation percentage in top CpG regions",  y = "Mean methylation percentage") +
-  theme_minimal()  +
-        theme(panel.grid.major = element_blank(), 
-        panel.grid.minor = element_blank(),
-        panel.background = element_blank(), 
-        axis.line = element_line(colour = "black"),
-        axis.text=element_text(size=17),
-        axis.title=element_text(size=19))
+####### plotting part #######
+### testing for statistical significance ### non-parametric
+#kruskal_res <- kruskal.test(mean_percentage ~ Sample_Type, data = out_res) ### on-parametric, alternative to annova
+#stat_test <- compare_means(mean_percentage ~ Sample_Type, data = out_res, method = "wilcox.test")  # Pairwise comparisons non-parametric 
+
+## parametric with annova
+out_res$Sample_Type <- as.factor(out_res$Sample_Type)
+anova_res <- aov(mean_percentage ~ Sample_Type, data = out_res)
+summary(anova_res)
+tukey_res <- TukeyHSD(anova_res)
+tukey_df <- as.data.frame(tukey_res$Sample_Type)
+tukey_df$comparison <- rownames(tukey_df)  # Extract group comparisons
+colnames(tukey_df) <- c("diff", "lwr", "upr", "p.adj", "comparison")
+
+tukey_df <- tukey_df %>%
+  separate(comparison, into = c("group1", "group2"), sep = "-")
+
+significant_pairs <- tukey_df %>%
+  filter(p.adj < 0.056) %>%  # Keep only significant comparisons
+  dplyr::select(group1, group2)
+
+my_comparisons <- as.list(as.data.frame(t(significant_pairs)))
+
+# Create Boxplot with *** Only Significant Comparisons ***
+box_all_plot <- ggplot(out_res, aes(x = Sample_Type, y = mean_percentage, fill = Sample_Type)) +
+    geom_boxplot(outlier.shape = NA) +   # Boxplot without outliers
+    geom_jitter(width = 0.2, size = 2, alpha = 0.7) +  # Add jittered points
+    stat_compare_means(comparisons = my_comparisons, label = "p.signif", size = 10) +  # Show only significant comparisons
+    stat_compare_means(method = "anova", label.y = max(out_res$mean_percentage) + 5,
+    size = 4, fontface = "bold") +  # Global ANOVA p-value
+    labs(title = "Box Plot of Mean Methylation Percentage in Top CpG Regions", 
+         y = "Mean Methylation Percentage") +
+    theme_minimal() +
+    theme(panel.grid.major = element_blank(), 
+          panel.grid.minor = element_blank(),
+          panel.background = element_blank(), 
+          axis.line = element_line(colour = "black"),
+          axis.text = element_text(size = 19),
+          axis.title = element_text(size = 21))
+
+# Print the plot
 print(box_all_plot)
 
 
-### violin plot
-violin<-out_res %>%
-  ggplot(aes(x = Sample_Type, y = mean_percentage, fill = Sample_Type)) +
-  geom_violin(trim = FALSE) +  # Creates a violin plot; set trim=FALSE to show full distribution
-  geom_jitter(width = 0.2, alpha = 0.5) +  # Add jittered points for individual data
-  labs(title = "Violin Plot of Mean Methylation Percentage by Sample Type", 
-       y = "Mean methylation percentage",
-       x = "Sample Type") +  # Add labels for X and Y axes
-  theme_minimal() +
-  theme(
-    panel.grid.major = element_blank(),
-    panel.grid.minor = element_blank(),
-    panel.background = element_blank(),
-    axis.line = element_line(colour = "black"),
-    axis.text = element_text(size = 17),
-    axis.title = element_text(size = 19)
-  ) 
-print(violin)  
+#### (altenative) = > showing all signicant or non-significant annotations
+#out_res$Sample_Type <- as.factor(out_res$Sample_Type)
+#my_comparisons <- list(
+#  c("N", "T1"),
+#  c("N", "T2"),
+#  c("N", "T3"),
+#  c("T1", "T2"),
+#  c("T1", "T3"),
+#  c("T2", "T3")
+#)
 
-pdf(file =  paste(output_dir, "patchwork_Plot_mean_methylation_percentage_top_CpG_region.pdf", sep = ""), height = 7, width = 12)
+#box_all_plot <- ggplot(out_res, aes(x = Sample_Type, y = mean_percentage, fill = Sample_Type)) +
+#    geom_boxplot(outlier.shape = NA) +   # Boxplot without outliers
+#    geom_jitter(width = 0.2, size = 2, alpha = 0.7) +  # Add jittered points
+#    stat_compare_means(comparisons = my_comparisons, label = "p.signif") +  # Pairwise significance stars
+#    stat_compare_means(method = "anova", label.y = max(out_res$mean_percentage) + 5) +  # Global ANOVA p-value
+#    labs(title = "Box Plot of Mean Methylation Percentage in Top CpG Regions", 
+#         y = "Mean Methylation Percentage") +
+#    theme_minimal() +
+#    theme(panel.grid.major = element_blank(), 
+#          panel.grid.minor = element_blank(),
+#          panel.background = element_blank(), 
+#          axis.line = element_line(colour = "black"),
+#          axis.text = element_text(size = 17),
+#          axis.title = element_text(size = 19))
+#print(box_all_plot)
+
+
+
+
+
+### violin plot
+# Define dynamic spacing for significance bars
+y_max <- max(out_res$mean_percentage) + 5  # Increase buffer space above violins
+step_size <- 4  # Further increase spacing between significance bars
+
+# Create Violin Plot with Adjusted Significance Placement
+violin <- ggplot(out_res, aes(x = Sample_Type, y = mean_percentage, fill = Sample_Type)) +
+    geom_violin(trim = FALSE, alpha = 0.7) +  # Violin plot with transparency
+    geom_jitter(width = 0.2, alpha = 0.7, color = "black") +  # Improve jitter visibility
+    stat_compare_means(comparisons = my_comparisons, label = "p.signif", size = 10, 
+                       vjust = 0.5, 
+                       y.position = y_max + step_size * seq_along(my_comparisons)) +  # Move stars higher
+    stat_compare_means(method = "anova", label.y = y_max + step_size * (length(my_comparisons) + 4), 
+                       size = 4, fontface = "bold") +  # Move ANOVA label higher
+    labs(title = "Violin Plot of Mean Methylation Percentage by Sample Type", 
+         y = "Mean methylation percentage",
+         x = "Sample Type") +  # Add labels for X and Y axes
+    expand_limits(y = y_max + step_size * (length(my_comparisons) + 3)) +  # Ensure enough space above violins
+    theme_minimal() +
+    theme(
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.background = element_blank(),
+        axis.line = element_line(colour = "black"),
+        axis.text = element_text(size = 19),
+        axis.title = element_text(size = 21)
+    )
+
+# Print the adjusted plot
+print(violin)
+
+pdf(file =  paste(output_dir, "patchwork_Plots_mean_methylation_percentage_top_CpG_specimen.pdf", sep = ""), height = 7, width = 12)
 both<-box_all_plot + violin
 print(both)
 dev.off()
 
-##############################
-### per patient plots ####
-##############################
 
 
 ##############################
@@ -260,6 +330,24 @@ write.table(out_res_annot, file = paste(output_dir, "mean_methylation_per_CpG_an
 #4  hg19_cpg_islands        10.858894 SRC490_T2_D   T2
 #5  hg19_cpg_shelves        72.366201 SRC490_T2_D   T2
 
+annot<-unique(out_res_annot$annot.type)
+out_table_annot<-NULL
+for (aa in 1:length(annot)){
+
+    annot_foc<-out_res_annot[out_res_annot$annot.type ==annot[aa], ]
+    annot_foc$Type <- as.factor(annot_foc$Type)
+    anova_res <- aov(mean_methylation ~ Type, data = annot_foc)
+    summary(anova_res)
+    tukey_res <- TukeyHSD(anova_res)
+    tukey_df <- as.data.frame(tukey_res$Type)
+    tukey_df$comparison <- rownames(tukey_df) 
+    tukey_df$annot_type<-annot[aa] # Extract group comparisons
+    colnames(tukey_df) <- c("diff", "lwr", "upr", "p.adj", "comparison")
+    out_table_annot<-rbind(tukey_df,out_table_annot)
+
+}
+
+
 # Create separate boxplots for each annotation type ###
 pdf(file =  paste(output_dir, "BoxPlot_mean_methylation_percentage_per_annotation_type_top_CpG_regions.pdf", sep = ""), height = 8, width = 9)
 anot_plot<-ggplot(out_res_annot, aes(x = Type, y = mean_methylation, fill = Type)) +
@@ -368,7 +456,7 @@ for (ii in 1:length(samples)){
    out_res_annot2<-rbind(dm_annotated_dfall,out_res_annot2)
 
 }   
-write.table(out_res_annot2, file = paste(output_dir, "annotated_all_top_CpG_regions.txt", sep = ""), col.names = TRUE, row.names = FALSE,sep = "\t", quote = FALSE)
+write.table(out_res_annot2, file = paste(output_dir, "annotated_all_top_CpG_specimens.txt", sep = ""), col.names = TRUE, row.names = FALSE,sep = "\t", quote = FALSE)
 
 
 # Loop through each Type
@@ -388,9 +476,6 @@ for (tt in 1:length(unique_types)) { ### loop through each type
        #if (nrow(subset_data) == 0) {
        #next
        #}
-    
-
-
 
     # Create the plot
     pdf(file=paste(output_dir,"boxplot_methylation_percentage_per_",unique_types[tt], "_sample_top_CpG_regions_",unique_annots[aa],".pdf", sep = ""),height = 7, width = 17)
