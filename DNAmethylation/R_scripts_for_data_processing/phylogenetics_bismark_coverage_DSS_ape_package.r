@@ -13,7 +13,7 @@ library(stringr)
 library(patchwork)
 library(ape)
 library(ggtree)
-library(phylotools)
+#library(phylotools)
 #library(rtracklayer)
 #library(ChIPseeker)
 #library(TxDb.Hsapiens.UCSC.hg19.knownGene)  # TxDb for the human genome hg19
@@ -115,8 +115,8 @@ for (cc in 1:length(combinations)) {
 }
     
     
-
-upgma_tree <- readRDS("~/Dropbox/cancer_reserach/sarcoma/sarcoma_analysis/methylation/full_cohort/ape_phylogenetics/top_CpG_regions/pairs/N_T2/phylo_tree_shared_top_cpgs_NA_removed_N_T2.rds")
+#### read the tree file
+upgma_tree <- readRDS("~/Dropbox/cancer_reserach/sarcoma/sarcoma_analysis/methylation/full_cohort/ape_phylogenetics/top_CpG_regions/pairs/T1_T2/phylo_tree_shared_top_cpgs_NA_removed_T1_T2.rds")
 
 
 # Plot the UPGMA tree
@@ -131,25 +131,26 @@ tip_colors <- ifelse(grepl("T2", upgma_tree$tip.label), "lightslateblue", "india
 # Define tip colors based on their labels
 
 
-pdf(file = "~/Dropbox/cancer_reserach/sarcoma/sarcoma_analysis/methylation/full_cohort/ape_phylogenetics/top_CpG_regions/pairs/N_T2/Plot_phylo_tree_shared_top_cpgs_NA0_N-T2.pdf", height = 14, width = 12)
+pdf(file = "~/Dropbox/cancer_reserach/sarcoma/sarcoma_analysis/methylation/full_cohort/ape_phylogenetics/top_CpG_regions/pairs/T1_T2/Plot_phylo_tree_shared_top_cpgs_NA5_T1-T2.pdf", height = 14, width = 12)
 plot_tree<-plot(upgma_tree, tip.col = tip_colors, cex = 1,edge.width = 5,no.margin = FALSE,font = 2)  # Adjust cex for better readability
 print(plot_tree)
 dev.off()
 
 #plot(upgma_tree, type = "cladogram", main = "UPGMA Tree", edge.width = 2) 
 #plot(upgma_tree, type = "radial", main = "UPGMA Tree", edge.width = 2) 
-pdf(file = "~/Dropbox/cancer_reserach/sarcoma/sarcoma_analysis/methylation/full_cohort/ape_phylogenetics/top_CpG_regions/pairs/N_T2/Unrooted_Plot_phylo_tree_shared_top_cpgs_with_NA0_N-T2.pdf", height = 22, width = 22)
+pdf(file = "~/Dropbox/cancer_reserach/sarcoma/sarcoma_analysis/methylation/full_cohort/ape_phylogenetics/top_CpG_regions/pairs/T1_T2/Unrooted_Plot_phylo_tree_shared_top_cpgs_with_NA5_T1-T2.pdf", height = 22, width = 22)
 unroot<-plot(upgma_tree, 
      type = "u",              # Unrooted tree layout
      main = "UPGMA Tree",     # Title
      edge.width = 5,          # Thicker branches
-     cex = 0.9,               # Reduce font size of labels
+     cex = 1.5,               # Reduce font size of labels
      no.margin = TRUE,
      tip.col = tip_colors)
 print(unroot)
 dev.off()
 
-pdf(file = "~/Dropbox/cancer_reserach/sarcoma/sarcoma_analysis/methylation/full_cohort/ape_phylogenetics/top_CpG_regions/pairs/N_T2/Fan_Plot_phylo_tree_shared_top_cpgs_with_NA0_N-T2.pdf", height = 22, width = 22)
+
+pdf(file = "~/Dropbox/cancer_reserach/sarcoma/sarcoma_analysis/methylation/full_cohort/ape_phylogenetics/top_CpG_regions/pairs/T1_T2/Fan_Plot_phylo_tree_shared_top_cpgs_with_NA5_T1-T2.pdf", height = 22, width = 22)
 fan<-plot(upgma_tree, 
      type = "f",              
      #main = "UPGMA Tree",     
@@ -161,6 +162,26 @@ fan<-plot(upgma_tree,
 print(fan)
 dev.off()
 
+
+######
+
+#num_clades <- length(upgma_tree$tip.label) # You can adjust this based on clades
+#clade_colors <- brewer.pal(min(num_clades, 12), "Set3") # Adjust color scheme as needed
+
+# Identify clades and assign colors
+#clade_groups <- cutree(hclust(dist(cophenetic(upgma_tree))), k = 5) # Adjust 'k' as needed
+#tip_colors <- clade_colors[clade_groups]
+
+# Plot the fan tree with colors per clade
+#fan <- plot(upgma_tree, 
+#     type = "fan",              
+#     edge.width = 7,
+#     no.margin = FALSE,
+#     tip.col = tip_colors,       
+#     cex = 3,
+#     font = 2)  
+
+#print(fan)
 
 # Convert the tree to a ggtree-compatible object
 #gg_tree <- ggtree(as.phylo(nj_tree)) +
