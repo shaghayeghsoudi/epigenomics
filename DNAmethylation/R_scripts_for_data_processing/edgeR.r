@@ -14,8 +14,8 @@ library(edgeR)
 library(EnhancedVolcano)
 #https://bioconductor.org/packages/devel/bioc/vignettes/EnhancedVolcano/inst/doc/EnhancedVolcano.html
 
-setwd("~/Dropbox/cancer_reserach/sarcoma/sarcoma_analysis/methylation/RRBS/downstream/edgeR/pilot1")
-targets <- read.delim(paste("targets.csv", sep = ""), stringsAsFactors=FALSE, sep = ",")
+setwd("~/Dropbox/cancer_reserach/sarcoma/sarcoma_analysis/methylation/RRBS_pilot/downstream/edgeR/pilot1")
+#targets <- read.delim(paste("targets.csv", sep = ""), stringsAsFactors=FALSE, sep = ",")
 
 files <- paste("coverage_files/",targets$File, sep = "")
 yall <- readBismark2DGE(files, sample.names=targets$Sample)
@@ -68,12 +68,12 @@ HasCoverage <- rowSums(Coverage >= 5) == length(targets$Sample)  ### 20 total nu
 
 
 #We also filter out CpGs that are never methylated or always methylated as they provide no information about differential methylation:
-#HasBoth <- rowSums(Me) > 0 & rowSums(Un) > 0
+HasBoth <- rowSums(Me) > 0 & rowSums(Un) > 0
 #table(HasCoverage, HasBoth)
 
 #The DGEList object is subsetted to retain only the non-filtered loci:
-# y_coverage_both <- yall[HasCoverage & HasBoth,, keep.lib.sizes=FALSE] 
-y <- yall[HasCoverage,, keep.lib.sizes=FALSE]
+ y_coverage_both <- yall[HasCoverage & HasBoth,, keep.lib.sizes=FALSE] 
+#y <- yall[HasCoverage,, keep.lib.sizes=FALSE]
 
 
 TotalLibSize <- y$samples$lib.size[Methylation=="Me"] +
